@@ -16,7 +16,7 @@ if "role" not in st.session_state:
 
 # --- School Header ---
 st.title("🏫 School of Futuro AI")
-st.subheader("Python Basics Quiz by Hadjar Naila 💻")
+st.subheader("Python Basics Quiz (English & Arabic) by Hadjar Naila 💻")
 st.write("---")
 
 # --- Choose Role ---
@@ -38,7 +38,7 @@ if role == "Student":
 
         if not existing.empty and not existing["Can_Retake"].values[0]:
             st.warning(f"⚠️ You already took the test, {name}. Wait for your teacher to allow a retake.")
-            st.info(f"Your last score: {existing['Score'].values[0]}/5")
+            st.info(f"Your last score: {existing['Score'].values[0]}/20")
         else:
             if st.button("Start the Test"):
                 st.session_state.quiz_started = True
@@ -52,24 +52,46 @@ if role == "Student":
         st.write("---")
         st.header("🧠 Python Basics Test")
 
-        questions = {
-            "What is the output of print(2 + 3 * 4)?": ["14", "20", "24", "Error"],
-            "Which of these is a valid variable name?": ["2var", "my-var", "_value", "class"],
-            "What keyword is used to define a function?": ["func", "define", "def", "lambda"],
-            "What does len([1,2,3]) return?": ["3", "2", "4", "Error"],
-            "What is the output of print('Python'[::-1])?": ["nohtyP", "Python", "Error", "nothyP"]
-        }
-        answers = ["14", "_value", "def", "3", "nohtyP"]
+        questions = [
+            ("What is the output of print(3 + 4 * 2)?", "ما ناتج الكود print(3 + 4 * 2)؟", ["14", "11", "7", "Error"]),
+            ("Which of the following is a valid variable name?", "أي من الأسماء التالية صالح كمتغير؟", ["2name", "first_name", "my-name", "class"]),
+            ("Which function is used to get input from the user?", "ما الدالة التي تُستخدم لإدخال البيانات من المستخدم؟", ["get()", "input()", "scan()", "read()"]),
+            ("What is the correct file extension for Python files?", "ما هو الامتداد الصحيح لملفات بايثون؟", [".pt", ".py", ".pyt", ".txt"]),
+            ("Which symbol is used for comments in Python?", "ما الرمز المستخدم للتعليقات في بايثون؟", ["//", "#", "/* */", "<!-- -->"]),
+            ("What data type is the value: 3.14?", "ما نوع البيانات للقيمة 3.14؟", ["int", "float", "str", "bool"]),
+            ("Which function checks the type of a variable?", "ما الدالة التي تُستخدم لمعرفة نوع المتغير؟", ["typeof()", "type()", "check()", "dataType()"]),
+            ("What is the output of len('Python')?", "ما ناتج الدالة len('Python')؟", ["6", "5", "7", "Error"]),
+            ("What will print(10 // 3) output?", "ما ناتج print(10 // 3)؟", ["3.33", "3", "4", "Error"]),
+            ("Which operator is used for exponentiation (power)?", "ما العامل المستخدم لرفع الأس (القوة)؟", ["^", "**", "%", "//"]),
+            ("What keyword is used for a condition?", "ما الكلمة المفتاحية المستخدمة لكتابة شرط؟", ["when", "if", "else", "loop"]),
+            ("Which of the following evaluates to True?", "أي من العبارات التالية نتيجتها True؟", ["5 > 10", "10 == 10", "3 != 3", "7 < 5"]),
+            ("Which keyword starts a for loop?", "ما الكلمة المفتاحية التي تبدأ بها حلقة for؟", ["loop", "iterate", "for", "repeat"]),
+            ("What is the output of: for i in range(3): print(i)?", "ما ناتج الكود: for i in range(3): print(i)؟", ["0 1 2", "1 2 3", "0 1 2 3", "Error"]),
+            ("Which statement stops a loop early?", "ما الجملة التي تُستخدم لإيقاف الحلقة مبكرًا؟", ["exit", "stop", "break", "return"]),
+            ("How do you access the first element of a list named fruits?", "كيف نصل إلى أول عنصر في قائمة اسمها fruits؟", ["fruits[0]", "fruits(0)", "fruits{0}", "first(fruits)"]),
+            ("What does mylist.append('x') do?", "ماذا تفعل الدالة mylist.append('x')؟", ["Deletes x", "Adds x to the list", "Sorts list", "Creates a copy"]),
+            ("Which keyword defines a function in Python?", "ما الكلمة المفتاحية التي تُستخدم لتعريف دالة؟", ["function", "def", "define", "lambda"]),
+            ("What will the following code print?\n\ndef add(a,b):\n\treturn a+b\nprint(add(2,3))", "ماذا سيطبع هذا الكود؟", ["5", "23", "Error", "a+b"]),
+            ("What is the output of bool(0)?", "ما ناتج الدالة bool(0)؟", ["True", "False", "0", "None"])
+        ]
 
-        for i, (q, opts) in enumerate(questions.items()):
-            st.write(f"**Q{i+1}. {q}**")
+        answers = [
+            "11", "first_name", "input()", ".py", "#",
+            "float", "type()", "6", "3", "**",
+            "if", "10 == 10", "for", "0 1 2", "break",
+            "fruits[0]", "Adds x to the list", "def", "5", "False"
+        ]
+
+        for i, (q_en, q_ar, opts) in enumerate(questions):
+            st.write(f"**Q{i+1}. {q_en}**")
+            st.write(f"{q_ar}")
             choice = st.radio("", opts, key=f"q{i}")
             st.session_state.answers[i] = choice
 
         if st.button("✅ Submit Answers"):
             score = 0
             for i, ans in enumerate(answers):
-                if st.session_state.answers[i] == ans:
+                if st.session_state.answers.get(i) == ans:
                     score += 1
             st.session_state.score = score
             st.session_state.quiz_started = False
@@ -83,7 +105,7 @@ if role == "Student":
                 results = pd.concat([results, pd.DataFrame([new_row])], ignore_index=True)
             st.session_state.results = results
 
-            st.success(f"🎉 {name}, your score is {score}/5")
+            st.success(f"🎉 {name}, your score is {score}/20")
 
 # =====================================================================
 # 👩‍🏫 TEACHER SIDE
