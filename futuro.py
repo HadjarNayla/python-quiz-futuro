@@ -1,10 +1,3 @@
-import json
-from io import StringIO
-
-creds_json = st.secrets["GOOGLE_CREDENTIALS"]
-creds_dict = json.loads(creds_json)
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-
 import streamlit as st
 import pandas as pd
 import gspread
