@@ -2,6 +2,19 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import json
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import streamlit as st
+
+def connect_to_gsheet():
+    scope = ["https://spreadsheets.google.com/feeds",
+             "https://www.googleapis.com/auth/drive"]
+    creds_dict = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    client = gspread.authorize(creds)
+    sheet = client.open("Python Quiz Results").sheet1
+    return sheet
 
 # ============================================================
 # 🔐 Connect to Google Sheets
@@ -231,4 +244,5 @@ elif role == "Teacher":
 
 st.write("---")
 st.caption("Made with ❤️ by Hadjar Naila | Futuro AI School")
+
 
