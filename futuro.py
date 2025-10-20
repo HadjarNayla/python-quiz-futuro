@@ -1,8 +1,11 @@
+import streamlit as st
+import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-import pandas as pd
-import streamlit as st
 
+# ============================================================
+# 🔐 Connect to Google Sheets
+# ============================================================
 def connect_to_gsheet():
     scope = [
         "https://spreadsheets.google.com/feeds",
@@ -10,16 +13,15 @@ def connect_to_gsheet():
     ]
     creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
     client = gspread.authorize(creds)
-    sheet = client.open("Python Quiz Results").sheet1  # nom de ton Google Sheet
+    sheet = client.open("Python Quiz Results").sheet1  # Your Google Sheet name
     return sheet
 
-import streamlit as st
-import pandas as pd
 
-# --- Page config ---
+# ============================================================
+# 🎨 Streamlit Config
+# ============================================================
 st.set_page_config(page_title="Python Quiz - Futuro AI", page_icon="🎓", layout="centered")
 
-# --- Global Arabic Style ---
 st.markdown("""
 <style>
 p[dir='rtl'] {
@@ -31,34 +33,36 @@ p[dir='rtl'] {
 </style>
 """, unsafe_allow_html=True)
 
-# --- Initialize session data ---
-if "results" not in st.session_state:
-    st.session_state.results = pd.DataFrame(columns=["Name", "Age", "Score", "Can_Retake"])
-
-if "quiz_started" not in st.session_state:
-    st.session_state.quiz_started = False
-
-# --- School Header ---
+# ============================================================
+# 🏫 App Header
+# ============================================================
 st.title("🏫 School of Futuro AI")
 st.subheader("Python Basics Quiz (English & Arabic) by Hadjar Naila 💻")
 st.write("---")
 
-# --- Choose Role ---
+# ============================================================
+# 🎭 Choose Role
+# ============================================================
 role = st.radio("Select your role:", ["Student", "Teacher"])
 
-# =====================================================================
+# ============================================================
 # 👩‍🎓 STUDENT SIDE
-# =====================================================================
+# ============================================================
 if role == "Student":
     st.header("👩‍🎓 Student Access")
 
     name = st.text_input("Enter your full name:")
     age = st.number_input("Enter your age:", min_value=5, max_value=100, step=1, value=10)
 
-    # Check if student already took the quiz
+    # Connect to Google Sheet
+    sheet = connect_to_gsheet()
+    data = sheet.get_all_records()
+    results = pd.DataFrame(data)
+
+    # Check if student can take quiz
     can_take_quiz = True
-    if name and not st.session_state.results.empty:
-        existing = st.session_state.results[st.session_state.results["Name"] == name]
+    if name and not results.empty:
+        existing = results[results["Name"] == name]
         if not existing.empty and not existing["Can_Retake"].values[0]:
             st.warning(f"⚠️ You already took the test, {name}. Wait for your teacher to allow a retake.")
             st.info(f"Your last score: {existing['Score'].values[0]}/40")
@@ -70,115 +74,62 @@ if role == "Student":
             st.session_state.student_name = name
             st.session_state.student_age = age
 
-    # --- Quiz Section ---
+    # ============================================================
+    # 🧠 Quiz Section
+    # ============================================================
     if st.session_state.get("quiz_started", False):
         st.write("---")
         st.header("🧠 Python Basics Test - Complete Version")
-        st.info("📝 This test has 40 questions: 20 Multiple Choice + 10 Code Output + 10 Code Writing")
+        st.info("📝 This test has 40 questions: 20 MCQs + 10 Code Output + 10 Code Writing")
 
-        # Define all questions and answers
+        # ===================== MULTIPLE CHOICE =====================
         mc_questions = [
-            ("What is the correct way to create a list in Python?", 
-             "ما الطريقة الصحيحة لإنشاء قائمة في بايثون؟",
-             ["list = (1, 2, 3)", "list = [1, 2, 3]", "list = {1, 2, 3}", "list = <1, 2, 3>"],
-             "list = [1, 2, 3]"),
-            
+            ("What is the correct way to create a list in Python?", "ما الطريقة الصحيحة لإنشاء قائمة في بايثون؟",
+             ["list = (1, 2, 3)", "list = [1, 2, 3]", "list = {1, 2, 3}", "list = <1, 2, 3>"], "list = [1, 2, 3]"),
             ("How do you access the last item in a list called bikes?",
              "كيف تصل إلى آخر عنصر في قائمة تسمى bikes؟",
-             ["bikes[0]", "bikes[-1]", "bikes[last]", "bikes.last()"],
-             "bikes[-1]"),
-            
-            ("What does this code print? print(5 % 2)",
-             "ماذا يطبع هذا الكود؟ print(5 % 2)",
-             ["2.5", "2", "1", "0"],
-             "1"),
-            
-            ("Which statement correctly checks if a variable age is 18 or greater?",
-             "أي عبارة تفحص بشكل صحيح إذا كان المتغير age يساوي 18 أو أكبر؟",
-             ["if age = 18:", "if age == 18:", "if age >= 18:", "if age => 18:"],
-             "if age >= 18:"),
-            
-            ("What is the difference between a tuple and a list?",
+             ["bikes[0]", "bikes[-1]", "bikes[last]", "bikes.last()"], "bikes[-1]"),
+            ("What does this code print? print(5 % 2)", "ماذا يطبع هذا الكود؟ print(5 % 2)",
+             ["2.5", "2", "1", "0"], "1"),
+            ("Which statement checks if variable age ≥ 18?",
+             "أي عبارة تفحص إذا كان المتغير age يساوي أو أكبر من 18؟",
+             ["if age = 18:", "if age == 18:", "if age >= 18:", "if age => 18:"], "if age >= 18:"),
+            ("What is the difference between tuple and list?",
              "ما الفرق بين tuple و list؟",
-             ["Tuples use () and lists use []", "Tuples are immutable, lists are mutable", "Both a and b", "There is no difference"],
-             "Both a and b"),
-            
-            ("How do you add an item to the end of a list?",
-             "كيف تضيف عنصرًا في نهاية القائمة؟",
-             ["list.add(item)", "list.append(item)", "list.insert(item)", "list.push(item)"],
-             "list.append(item)"),
-            
-            ("What does this code do? bikes = bikes[:]",
-             "ماذا يفعل هذا الكود؟ bikes = bikes[:]",
-             ["Deletes the list", "Creates a copy of the list", "Reverses the list", "Sorts the list"],
-             "Creates a copy of the list"),
-            
-            ("In a dictionary, what is 'color' in this code? alien = {'color': 'green'}",
-             "في القاموس، ما هو 'color' في هذا الكود؟",
-             ["A value", "A key", "A method", "A function"],
-             "A key"),
-            
-            ("What does the input() function return?",
-             "ما الذي تُرجعه دالة input()؟",
-             ["An integer", "A float", "A string", "A boolean"],
-             "A string"),
-            
-            ("How do you convert user input to an integer?",
-             "كيف تحول إدخال المستخدم إلى عدد صحيح؟",
-             ["int(input())", "input(int)", "integer(input())", "input().int()"],
-             "int(input())"),
-            
-            ("What will range(1, 5) produce?",
-             "ماذا ستنتج range(1, 5)؟",
-             ["1, 2, 3, 4, 5", "1, 2, 3, 4", "0, 1, 2, 3, 4", "2, 3, 4, 5"],
-             "1, 2, 3, 4"),
-            
-            ("Which loop is best for iterating through a list?",
-             "أي حلقة هي الأفضل للتكرار عبر قائمة؟",
-             ["while loop", "for loop", "do-while loop", "repeat loop"],
-             "for loop"),
-            
-            ("What does break do in a loop?",
-             "ماذا يفعل break في الحلقة؟",
-             ["Pauses the loop", "Exits the loop completely", "Skips to the next iteration", "Restarts the loop"],
-             "Exits the loop completely"),
-            
-            ("How do you define a function in Python?",
-             "كيف تُعرّف دالة في بايثون؟",
-             ["function myFunc():", "def myFunc():", "create myFunc():", "func myFunc():"],
-             "def myFunc():"),
-            
-            ("What is a parameter in a function?",
-             "ما هو المعامل (parameter) في الدالة؟",
-             ["Information passed to the function", "Information received by the function", "The function's name", "The return value"],
-             "Information received by the function"),
-            
-            ("What does this list comprehension do? squares = [x**2 for x in range(1, 11)]",
-             "ماذا يفعل هذا الـ list comprehension؟",
-             ["Creates a list of numbers 1-10", "Creates a list of squares from 1-100", "Squares each number in a list", "Creates 10 squared values"],
-             "Creates 10 squared values"),
-            
-            ("How do you access a value in a dictionary?",
-             "كيف تصل إلى قيمة في القاموس؟",
-             ["dict.get(key)", "dict[key]", "Both a and b", "dict(key)"],
-             "Both a and b"),
-            
-            ("What does elif stand for?",
-             "ماذا تعني elif؟",
-             ["Else if case", "Else if", "Electronic if", "End if"],
-             "Else if"),
-            
-            ("Which operator checks if two values are NOT equal?",
-             "أي عامل يفحص إذا كانت قيمتان غير متساويتين؟",
-             ["<>", "!=", "!==", "not="],
-             "!="),
-            
-            ("What does continue do in a loop?",
-             "ماذا يفعل continue في الحلقة؟",
-             ["Exits the loop", "Pauses the loop", "Skips to the next iteration", "Restarts the entire program"],
-             "Skips to the next iteration")
+             ["Tuples use () and lists use []", "Tuples are immutable, lists are mutable", "Both a and b", "No difference"], "Both a and b"),
+            ("How to add an item to the end of a list?", "كيف تضيف عنصرًا في نهاية القائمة؟",
+             ["list.add(item)", "list.append(item)", "list.insert(item)", "list.push(item)"], "list.append(item)"),
+            ("What does bikes = bikes[:] do?", "ماذا يفعل هذا الكود؟ bikes = bikes[:]",
+             ["Deletes the list", "Copies the list", "Reverses list", "Sorts list"], "Copies the list"),
+            ("In {'color': 'green'}, what is 'color'?", "في {'color': 'green'}، ما هو 'color'؟",
+             ["Value", "Key", "Method", "Function"], "Key"),
+            ("What does input() return?", "ما الذي تُرجعه input()؟",
+             ["int", "float", "string", "bool"], "string"),
+            ("Convert input to int:", "حوّل إدخال المستخدم إلى int:",
+             ["int(input())", "input(int)", "integer(input())", "input().int()"], "int(input())"),
+            ("What will range(1,5) produce?", "ماذا تنتج range(1,5)؟",
+             ["1,2,3,4,5", "1,2,3,4", "0,1,2,3,4", "2,3,4,5"], "1,2,3,4"),
+            ("Best loop for list iteration?", "أفضل حلقة للتكرار عبر قائمة؟",
+             ["while", "for", "do-while", "repeat"], "for"),
+            ("What does break do?", "ماذا يفعل break؟",
+             ["Pause", "Exit loop", "Skip", "Restart"], "Exit loop"),
+            ("Define a function:", "كيف تُعرّف دالة؟",
+             ["function myFunc():", "def myFunc():", "create myFunc():", "func myFunc():"], "def myFunc():"),
+            ("Parameter in function?", "ما هو المعامل في الدالة؟",
+             ["Passed info", "Received info", "Function name", "Return value"], "Received info"),
+            ("squares = [x**2 for x in range(1,11)] does what?", "ماذا يفعل هذا؟",
+             ["List 1–10", "Squares 1–100", "Squares 1–10", "10 squared"], "Squares 1–10"),
+            ("Access dict value?", "كيف تصل إلى قيمة في القاموس؟",
+             ["dict.get(key)", "dict[key]", "Both", "dict(key)"], "Both"),
+            ("elif means?", "ماذا تعني elif؟",
+             ["Else if", "End if", "Else case", "Error"], "Else if"),
+            ("Operator for not equal?", "العامل لعدم المساواة؟",
+             ["<>", "!=", "!==", "not="], "!="),
+            ("continue does what?", "ماذا يفعل continue؟",
+             ["Exit", "Pause", "Skip iteration", "Restart"], "Skip iteration")
         ]
 
+        # ===================== CODE OUTPUT =====================
         code_output_questions = [
             ("numbers = [1, 2, 3, 4, 5]\nprint(numbers[2])", "ما الناتج؟",
              ["1", "2", "3", "4"], "3"),
@@ -202,37 +153,36 @@ if role == "Student":
              ["[1, 2, 3]", "[1, 4, 9]", "[2, 4, 6]", "[1, 4, 9, 16]"], "[1, 4, 9]")
         ]
 
+        # ===================== CODE WRITING =====================
         code_writing_questions = [
             ("Create a list called colors with three color names.", "أنشئ قائمة اسمها colors بها ثلاثة أسماء ألوان.", ["colors", "=", "["]),
-            ("Write a for loop that prints numbers 1 through 5.", "اكتب حلقة for تطبع الأرقام من 1 إلى 5.", ["for", "range", "1", "6"]),
+            ("Write a for loop that prints numbers 1–5.", "اكتب حلقة for تطبع الأرقام من 1 إلى 5.", ["for", "range", "1", "6"]),
             ("Create a dictionary called person with keys 'name' and 'age'.", "أنشئ قاموسًا اسمه person بمفاتيح 'name' و 'age'.", ["person", "=", "{", "name", "age"]),
-            ("Write an if statement that checks if a variable score is greater than 90.", "اكتب عبارة if تفحص إذا كان المتغير score أكبر من 90.", ["if", "score", ">", "90"]),
-            ("Write a function called add_numbers that takes two parameters and returns their sum.", "اكتب دالة اسمها add_numbers تأخذ معاملين وتُرجع مجموعهما.", ["def", "add_numbers", "return"]),
-            ("Create a list comprehension that generates squares of numbers 1-10.", "أنشئ list comprehension يولد مربعات الأرقام من 1 إلى 10.", ["**2", "for", "range", "1", "11"]),
-            ("Write a while loop that counts from 1 to 3.", "اكتب حلقة while تعد من 1 إلى 3.", ["while", "<=", "3"]),
-            ("Access the first element of a list called fruits.", "اصل إلى العنصر الأول من قائمة اسمها fruits.", ["fruits[0]"]),
-            ("Add a new key-value pair to a dictionary called car: key='color', value='red'.", "أضف زوج مفتاح-قيمة جديد لقاموس اسمه car: المفتاح='color'، القيمة='red'.", ["car", "color", "red"]),
-            ("Write code to get user input and store it in a variable called name.", "اكتب كودًا للحصول على إدخال المستخدم وتخزينه في متغير اسمه name.", ["name", "=", "input"])
+            ("if statement checking score > 90.", "اكتب if تفحص إذا كان score > 90.", ["if", "score", ">", "90"]),
+            ("Function add_numbers with 2 params returning sum.", "دالة add_numbers تأخذ معاملين وتُرجع مجموعهما.", ["def", "add_numbers", "return"]),
+            ("List comprehension for squares 1–10.", "list comprehension لمربعات الأرقام من 1 إلى 10.", ["**2", "for", "range", "1", "11"]),
+            ("While loop counting 1–3.", "حلقة while تعد من 1 إلى 3.", ["while", "<=", "3"]),
+            ("Access first element of fruits.", "الوصول إلى أول عنصر في fruits.", ["fruits[0]"]),
+            ("Add key='color', value='red' to dict car.", "أضف مفتاح 'color' بقيمة 'red' إلى car.", ["car", "color", "red"]),
+            ("Get user input in variable name.", "أدخل المستخدم في متغير اسمه name.", ["name", "=", "input"])
         ]
 
+        # ===================== FORM =====================
         with st.form("quiz_form"):
             st.subheader("📚 Part 1: Multiple Choice (20 questions)")
             mc_answers = []
             for i, (q_en, q_ar, opts, correct) in enumerate(mc_questions):
                 st.write(f"**Q{i+1}. {q_en}**")
                 st.markdown(f"<p dir='rtl'>{q_ar}</p>", unsafe_allow_html=True)
-                answer = st.radio("Select your answer:", opts, key=f"mc_{i}", index=None)
-                mc_answers.append(answer)
+                mc_answers.append(st.radio("Answer:", opts, key=f"mc_{i}", index=None))
 
             st.write("---")
             st.subheader("💻 Part 2: Code Output (10 questions)")
             co_answers = []
             for i, (code, q_ar, opts, correct) in enumerate(code_output_questions):
-                st.write(f"**Q{i+21}.**")
                 st.code(code, language="python")
                 st.markdown(f"<p dir='rtl'>{q_ar}</p>", unsafe_allow_html=True)
-                answer = st.radio("Select your answer:", opts, key=f"co_{i}", index=None)
-                co_answers.append(answer)
+                co_answers.append(st.radio("Answer:", opts, key=f"co_{i}", index=None))
 
             st.write("---")
             st.subheader("✍️ Part 3: Code Writing (10 questions)")
@@ -240,90 +190,44 @@ if role == "Student":
             for i, (q_en, q_ar, keywords) in enumerate(code_writing_questions):
                 st.write(f"**Q{i+31}. {q_en}**")
                 st.markdown(f"<p dir='rtl'>{q_ar}</p>", unsafe_allow_html=True)
-                answer = st.text_area("Your code:", key=f"cw_{i}", height=80)
-                cw_answers.append(answer)
+                cw_answers.append(st.text_area("Your code:", key=f"cw_{i}", height=80))
 
-            submitted = st.form_submit_button("✅ Submit All Answers", type="primary")
+            submitted = st.form_submit_button("✅ Submit All Answers")
 
         if submitted:
             score = 0
             for i, (_, _, _, correct) in enumerate(mc_questions):
-                if mc_answers[i] == correct:
-                    score += 1
+                if mc_answers[i] == correct: score += 1
             for i, (_, _, _, correct) in enumerate(code_output_questions):
-                if co_answers[i] == correct:
-                    score += 1
+                if co_answers[i] == correct: score += 1
             for i, (_, _, keywords) in enumerate(code_writing_questions):
-                answer_lower = cw_answers[i].lower()
-                if all(kw.lower() in answer_lower for kw in keywords):
-                    score += 1
-
-            student_name = st.session_state.get("student_name", name)
-            student_age = st.session_state.get("student_age", age)
-            results = st.session_state.results
-
-            if student_name in results["Name"].values:
-                results.loc[results["Name"] == student_name, ["Age", "Score", "Can_Retake"]] = [student_age, score, False]
-            else:
-                new_row = pd.DataFrame([{"Name": student_name, "Age": student_age, "Score": score, "Can_Retake": False}])
-                results = pd.concat([results, new_row], ignore_index=True)
-
-            st.session_state.results = results
-            st.session_state.quiz_started = False
+                if all(kw.lower() in cw_answers[i].lower() for kw in keywords): score += 1
 
             st.balloons()
-            st.success(f"🎉 {student_name}, your score is **{score}/40**")
+            st.success(f"🎉 {name}, your score is **{score}/40**")
 
-            if score >= 36:
-                st.success("🌟 **Excellent!** You've mastered the basics!")
-            elif score >= 30:
-                st.info("👏 **Great job!** Review a few concepts.")
-            elif score >= 24:
-                st.warning("👍 **Good start!** Keep practicing.")
-            else:
-                st.error("📚 **Review the material and try again.**")
+            sheet.append_row([name, age, score, False])
+            st.info("✅ Result saved to Google Sheets")
 
-            st.info("Your teacher can see your results. Wait for approval if you want to retake the test.")
-
-# =====================================================================
+# ============================================================
 # 👩‍🏫 TEACHER SIDE
-# =====================================================================
+# ============================================================
 elif role == "Teacher":
     st.header("👩‍🏫 Teacher Access")
-
     password = st.text_input("Enter password:", type="password")
 
     if password == "admin123":
         st.success("✅ Access granted")
-        st.subheader("📊 Students Results")
+        sheet = connect_to_gsheet()
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
 
-        if st.session_state.results.empty:
-            st.info("No students have taken the quiz yet.")
+        if df.empty:
+            st.info("No students yet.")
         else:
-            st.dataframe(st.session_state.results, use_container_width=True)
-
-            students = list(st.session_state.results["Name"])
-            if students:
-                st.write("---")
-                st.subheader("🔄 Allow Retake")
-                selected_student = st.selectbox("Select student to allow retake:", students)
-                if st.button("Allow Retake"):
-                    st.session_state.results.loc[
-                        st.session_state.results["Name"] == selected_student, "Can_Retake"
-                    ] = True
-                    st.success(f"✅ {selected_student} can now retake the quiz!")
-
-            st.write("---")
-            csv = st.session_state.results.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Results (CSV)",
-                data=csv,
-                file_name="quiz_results.csv",
-                mime="text/csv"
-            )
+            st.dataframe(df, use_container_width=True)
     elif password:
-        st.error("❌ Wrong password. Try again.")
+        st.error("❌ Wrong password.")
 
 st.write("---")
 st.caption("Made with ❤️ by Hadjar Naila | Futuro AI School")
-
