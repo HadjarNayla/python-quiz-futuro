@@ -448,13 +448,8 @@ if role == "Student":
                 st.caption(f"Total test runs: {len(st.session_state.execution_history)}")
             else:
                 st.info("👈 Click 'Test Run' to see your code output here")
-                st.markdown("""
-                **Tips:**
-                - Use a for loop with range(1, 101)
-                - Check divisibility with % operator
-                - Use if/elif/else statements
-                - Print each result on a new line
-                """)
+
+
 
 # =====================================================================
 # 👩‍🏫 TEACHER SIDE
@@ -497,3 +492,4 @@ elif role == "Teacher":
 
 st.write("---")
 st.caption("Made with ❤️ by Hadjar Naila | Futuro AI School")
+
