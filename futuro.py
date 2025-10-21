@@ -19,10 +19,9 @@ p[dir='rtl'] {
 """, unsafe_allow_html=True)
 
 # --- Safe Code Execution Function ---
-def execute_code_safely(code, test_cases):
+def execute_student_code(code):
     """
-    Execute student code and check against test cases
-    Returns: (is_correct, output, error_message)
+    Execute student code and return output and any errors
     """
     try:
         # Create a clean namespace for execution
@@ -39,63 +38,48 @@ def execute_code_safely(code, test_cases):
         output = sys.stdout.getvalue()
         sys.stdout = old_stdout
         
-        # Check against test cases
-        for test_case in test_cases:
-            if test_case['type'] == 'variable':
-                # Check if variable exists and has correct value
-                var_name = test_case['var_name']
-                expected = test_case['expected']
-                if var_name in namespace:
-                    actual = namespace[var_name]
-                    if actual == expected or str(actual) == str(expected):
-                        return True, output, None
-                    else:
-                        return False, output, f"Variable '{var_name}' has wrong value"
-                else:
-                    return False, output, f"Variable '{var_name}' not found"
-            
-            elif test_case['type'] == 'function':
-                # Check if function exists and works correctly
-                func_name = test_case['func_name']
-                if func_name in namespace and callable(namespace[func_name]):
-                    func = namespace[func_name]
-                    # Test with provided inputs
-                    for inp, expected_output in test_case['tests']:
-                        try:
-                            result = func(*inp) if isinstance(inp, tuple) else func(inp)
-                            if result != expected_output:
-                                return False, output, f"Function returned {result}, expected {expected_output}"
-                        except Exception as e:
-                            return False, output, f"Function error: {str(e)}"
-                    return True, output, None
-                else:
-                    return False, output, f"Function '{func_name}' not found or not callable"
-            
-            elif test_case['type'] == 'output':
-                # Check printed output
-                expected_output = test_case['expected']
-                if expected_output in output or output.strip() == expected_output.strip():
-                    return True, output, None
-                else:
-                    return False, output, f"Output doesn't match expected"
-            
-            elif test_case['type'] == 'list_comprehension':
-                # Check if specific variable contains correct list
-                var_name = test_case['var_name']
-                expected = test_case['expected']
-                if var_name in namespace:
-                    if namespace[var_name] == expected:
-                        return True, output, None
-                    else:
-                        return False, output, f"List '{var_name}' has wrong values"
-                else:
-                    return False, output, f"Variable '{var_name}' not found"
-        
-        return False, output, "No test cases matched"
+        return True, output, None
         
     except Exception as e:
         sys.stdout = old_stdout
-        return False, "", f"Error: {str(e)}"
+        return False, "", str(e)
+
+def check_programming_challenge(code, output):
+    """
+    Check if the student's code solves the programming challenge correctly
+    Challenge: Print numbers 1-100, but for multiples of 3 print "Fizz", 
+    for multiples of 5 print "Buzz", for both print "FizzBuzz"
+    """
+    expected_output = []
+    for i in range(1, 101):
+        if i % 3 == 0 and i % 5 == 0:
+            expected_output.append("FizzBuzz")
+        elif i % 3 == 0:
+            expected_output.append("Fizz")
+        elif i % 5 == 0:
+            expected_output.append("Buzz")
+        else:
+            expected_output.append(str(i))
+    
+    expected_string = "\n".join(expected_output)
+    
+    # Compare output (strip whitespace)
+    if output.strip() == expected_string.strip():
+        return True, "Perfect! Your code produces the correct output."
+    else:
+        # Provide helpful feedback
+        output_lines = output.strip().split("\n")
+        expected_lines = expected_string.strip().split("\n")
+        
+        if len(output_lines) != 100:
+            return False, f"Your code printed {len(output_lines)} lines, but should print 100 lines."
+        
+        # Find first mismatch
+        for i, (out, exp) in enumerate(zip(output_lines, expected_lines)):
+            if out != exp:
+                return False, f"Line {i+1} is incorrect. Expected '{exp}' but got '{out}'"
+        
+        return False, "Output doesn't match expected result."
 
 # --- Initialize session data ---
 if "results" not in st.session_state:
@@ -103,6 +87,12 @@ if "results" not in st.session_state:
 
 if "quiz_started" not in st.session_state:
     st.session_state.quiz_started = False
+
+if "part3_code" not in st.session_state:
+    st.session_state.part3_code = ""
+
+if "execution_history" not in st.session_state:
+    st.session_state.execution_history = []
 
 # --- School Header ---
 st.title("🏫 School of Futuro AI")
@@ -127,7 +117,7 @@ if role == "Student":
         existing = st.session_state.results[st.session_state.results["Name"] == name]
         if not existing.empty and not existing["Can_Retake"].values[0]:
             st.warning(f"⚠️ You already took the test, {name}. Wait for your teacher to allow a retake.")
-            st.info(f"Your last score: {existing['Score'].values[0]}/40")
+            st.info(f"Your last score: {existing['Score'].values[0]}/31")
             can_take_quiz = False
 
     if name and can_take_quiz:
@@ -135,12 +125,14 @@ if role == "Student":
             st.session_state.quiz_started = True
             st.session_state.student_name = name
             st.session_state.student_age = age
+            st.session_state.part3_code = ""
+            st.session_state.execution_history = []
 
     # --- Quiz Section ---
     if st.session_state.get("quiz_started", False):
         st.write("---")
         st.header("🧠 Python Basics Test - Complete Version")
-        st.info("📝 This test has 40 questions: 20 Multiple Choice + 10 Code Output + 10 Code Writing")
+        st.info("📝 This test has 31 questions: 20 Multiple Choice + 10 Code Output + 1 Programming Challenge")
 
         # Define all questions and answers
         mc_questions = [
@@ -268,106 +260,6 @@ if role == "Student":
              ["[1, 2, 3]", "[1, 4, 9]", "[2, 4, 6]", "[1, 4, 9, 16]"], "[1, 4, 9]")
         ]
 
-        # NEW: Code writing questions with test cases
-        code_writing_questions = [
-            {
-                "question_en": "Create a list called colors with three color names (e.g., 'red', 'blue', 'green')",
-                "question_ar": "أنشئ قائمة اسمها colors بها ثلاثة أسماء ألوان",
-                "test_cases": [{
-                    "type": "variable",
-                    "var_name": "colors",
-                    "expected": lambda x: isinstance(x, list) and len(x) == 3
-                }],
-                "hint": "colors = ['red', 'blue', 'green']"
-            },
-            {
-                "question_en": "Write a for loop that prints numbers 1 through 5",
-                "question_ar": "اكتب حلقة for تطبع الأرقام من 1 إلى 5",
-                "test_cases": [{
-                    "type": "output",
-                    "expected": "1\n2\n3\n4\n5"
-                }],
-                "hint": "for i in range(1, 6):\n    print(i)"
-            },
-            {
-                "question_en": "Create a dictionary called person with keys 'name' and 'age' (any values)",
-                "question_ar": "أنشئ قاموسًا اسمه person بمفاتيح 'name' و 'age'",
-                "test_cases": [{
-                    "type": "variable",
-                    "var_name": "person",
-                    "expected": lambda x: isinstance(x, dict) and 'name' in x and 'age' in x
-                }],
-                "hint": "person = {'name': 'Ali', 'age': 25}"
-            },
-            {
-                "question_en": "Create a variable score = 95, then write an if statement that prints 'Passed' if score > 90",
-                "question_ar": "أنشئ متغير score = 95، ثم اكتب عبارة if تطبع 'Passed' إذا كان score > 90",
-                "test_cases": [{
-                    "type": "output",
-                    "expected": "Passed"
-                }],
-                "hint": "score = 95\nif score > 90:\n    print('Passed')"
-            },
-            {
-                "question_en": "Write a function called add_numbers that takes two parameters and returns their sum",
-                "question_ar": "اكتب دالة اسمها add_numbers تأخذ معاملين وتُرجع مجموعهما",
-                "test_cases": [{
-                    "type": "function",
-                    "func_name": "add_numbers",
-                    "tests": [((3, 5), 8), ((10, 20), 30), ((0, 0), 0)]
-                }],
-                "hint": "def add_numbers(a, b):\n    return a + b"
-            },
-            {
-                "question_en": "Create a list comprehension called squares that generates squares of numbers 1-5",
-                "question_ar": "أنشئ list comprehension اسمه squares يولد مربعات الأرقام من 1 إلى 5",
-                "test_cases": [{
-                    "type": "list_comprehension",
-                    "var_name": "squares",
-                    "expected": [1, 4, 9, 16, 25]
-                }],
-                "hint": "squares = [x**2 for x in range(1, 6)]"
-            },
-            {
-                "question_en": "Write a while loop that prints numbers 1, 2, 3",
-                "question_ar": "اكتب حلقة while تطبع الأرقام 1، 2، 3",
-                "test_cases": [{
-                    "type": "output",
-                    "expected": "1\n2\n3"
-                }],
-                "hint": "i = 1\nwhile i <= 3:\n    print(i)\n    i += 1"
-            },
-            {
-                "question_en": "Create a list fruits = ['apple', 'banana', 'orange'], then print the first element",
-                "question_ar": "أنشئ قائمة fruits = ['apple', 'banana', 'orange']، ثم اطبع العنصر الأول",
-                "test_cases": [{
-                    "type": "output",
-                    "expected": "apple"
-                }],
-                "hint": "fruits = ['apple', 'banana', 'orange']\nprint(fruits[0])"
-            },
-            {
-                "question_en": "Create a dictionary car = {'brand': 'Toyota'}, then add key 'color' with value 'red'",
-                "question_ar": "أنشئ قاموس car = {'brand': 'Toyota'}، ثم أضف مفتاح 'color' بقيمة 'red'",
-                "test_cases": [{
-                    "type": "variable",
-                    "var_name": "car",
-                    "expected": lambda x: isinstance(x, dict) and x.get('color') == 'red' and x.get('brand') == 'Toyota'
-                }],
-                "hint": "car = {'brand': 'Toyota'}\ncar['color'] = 'red'"
-            },
-            {
-                "question_en": "Write code to create a variable name = 'Ahmed' (no input needed)",
-                "question_ar": "اكتب كودًا لإنشاء متغير name = 'Ahmed'",
-                "test_cases": [{
-                    "type": "variable",
-                    "var_name": "name",
-                    "expected": lambda x: isinstance(x, str) and len(x) > 0
-                }],
-                "hint": "name = 'Ahmed'"
-            }
-        ]
-
         with st.form("quiz_form"):
             st.subheader("📚 Part 1: Multiple Choice (20 questions)")
             mc_answers = []
@@ -387,85 +279,182 @@ if role == "Student":
                 answer = st.radio("Select your answer:", opts, key=f"co_{i}", index=None)
                 co_answers.append(answer)
 
-            st.write("---")
-            st.subheader("✍️ Part 3: Code Writing (10 questions)")
-            st.info("⚡ Your code will be executed and tested automatically!")
-            cw_answers = []
-            for i, q_data in enumerate(code_writing_questions):
-                st.write(f"**Q{i+31}. {q_data['question_en']}**")
-                st.markdown(f"<p dir='rtl'>{q_data['question_ar']}</p>", unsafe_allow_html=True)
-                answer = st.text_area("Your code:", key=f"cw_{i}", height=100, 
-                                     placeholder=f"Example: {q_data['hint']}")
-                cw_answers.append(answer)
-
-            submitted = st.form_submit_button("✅ Submit All Answers", type="primary")
+            submitted = st.form_submit_button("✅ Submit Parts 1 & 2", type="primary")
 
         if submitted:
-            score = 0
+            # Calculate score for parts 1 and 2
+            part1_score = sum(1 for i, (_, _, _, c) in enumerate(mc_questions) if mc_answers[i] == c)
+            part2_score = sum(1 for i, (_, _, _, c) in enumerate(code_output_questions) if co_answers[i] == c)
             
-            # Grade Part 1: Multiple Choice
-            for i, (_, _, _, correct) in enumerate(mc_questions):
-                if mc_answers[i] == correct:
-                    score += 1
+            # Store partial scores
+            st.session_state.part1_score = part1_score
+            st.session_state.part2_score = part2_score
+            st.session_state.mc_answers = mc_answers
+            st.session_state.co_answers = co_answers
             
-            # Grade Part 2: Code Output
-            for i, (_, _, _, correct) in enumerate(code_output_questions):
-                if co_answers[i] == correct:
-                    score += 1
+            st.success(f"✅ Parts 1 & 2 submitted! Score so far: {part1_score + part2_score}/30")
+            st.info("📝 Now complete Part 3: Programming Challenge below")
+
+        # --- Part 3: Programming Challenge (Outside the form) ---
+        st.write("---")
+        st.subheader("✍️ Part 3: Programming Challenge (10 points)")
+        
+        st.markdown("""
+        **Q31. FizzBuzz Challenge:**
+        
+        Write a program that prints numbers from 1 to 100, but:
+        - For multiples of 3, print "Fizz" instead of the number
+        - For multiples of 5, print "Buzz" instead of the number
+        - For multiples of both 3 and 5, print "FizzBuzz"
+        - For other numbers, print the number itself
+        
+        **Example output (first 15 lines):**
+        ```
+        1
+        2
+        Fizz
+        4
+        Buzz
+        Fizz
+        7
+        8
+        Fizz
+        Buzz
+        11
+        Fizz
+        13
+        14
+        FizzBuzz
+        ```
+        """)
+        
+        st.markdown("<p dir='rtl'><strong>تحدي FizzBuzz:</strong><br/>اكتب برنامجًا يطبع الأرقام من 1 إلى 100، ولكن:<br/>- لمضاعفات 3، اطبع 'Fizz' بدلاً من الرقم<br/>- لمضاعفات 5، اطبع 'Buzz' بدلاً من الرقم<br/>- لمضاعفات 3 و 5 معًا، اطبع 'FizzBuzz'<br/>- للأرقام الأخرى، اطبع الرقم نفسه</p>", unsafe_allow_html=True)
+
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            student_code = st.text_area(
+                "Write your code here:",
+                value=st.session_state.part3_code,
+                height=300,
+                placeholder="for i in range(1, 101):\n    # Your code here...",
+                key="code_editor"
+            )
             
-            # Grade Part 3: Code Writing (with execution)
-            st.write("---")
-            st.subheader("🔍 Part 3 Detailed Results:")
-            cw_score = 0
-            for i, q_data in enumerate(code_writing_questions):
-                student_code = cw_answers[i]
+            st.session_state.part3_code = student_code
+            
+            col_test, col_submit = st.columns(2)
+            
+            with col_test:
+                if st.button("🧪 Test Run", type="secondary", use_container_width=True):
+                    if student_code.strip():
+                        success, output, error = execute_student_code(student_code)
+                        
+                        # Add to execution history
+                        st.session_state.execution_history.append({
+                            "code": student_code,
+                            "success": success,
+                            "output": output,
+                            "error": error
+                        })
+                        
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Please write some code first!")
+            
+            with col_submit:
+                if st.button("✅ Submit Final Answer", type="primary", use_container_width=True):
+                    if student_code.strip():
+                        # Check if parts 1 and 2 were submitted
+                        if "part1_score" not in st.session_state:
+                            st.error("❌ Please submit Parts 1 & 2 first!")
+                        else:
+                            success, output, error = execute_student_code(student_code)
+                            
+                            part3_score = 0
+                            if success:
+                                is_correct, feedback = check_programming_challenge(student_code, output)
+                                if is_correct:
+                                    part3_score = 10
+                                    st.success(f"🎉 {feedback}")
+                                else:
+                                    st.error(f"❌ {feedback}")
+                            else:
+                                st.error(f"❌ Error in your code: {error}")
+                            
+                            # Calculate final score
+                            total_score = st.session_state.part1_score + st.session_state.part2_score + part3_score
+                            
+                            # Save results
+                            student_name = st.session_state.get("student_name", name)
+                            student_age = st.session_state.get("student_age", age)
+                            results = st.session_state.results
+
+                            if student_name in results["Name"].values:
+                                results.loc[results["Name"] == student_name, ["Age", "Score", "Can_Retake"]] = [student_age, total_score, False]
+                            else:
+                                new_row = pd.DataFrame([{"Name": student_name, "Age": student_age, "Score": total_score, "Can_Retake": False}])
+                                results = pd.concat([results, new_row], ignore_index=True)
+
+                            st.session_state.results = results
+                            
+                            st.balloons()
+                            st.success(f"🎉 {student_name}, your final score is **{total_score}/31**")
+                            st.info(f"Part 1 (MC): {st.session_state.part1_score}/20 | "
+                                   f"Part 2 (Output): {st.session_state.part2_score}/10 | "
+                                   f"Part 3 (Challenge): {part3_score}/10")
+
+                            if total_score >= 28:
+                                st.success("🌟 **Excellent!** You've mastered Python basics!")
+                            elif total_score >= 23:
+                                st.info("👏 **Great job!** Keep practicing.")
+                            elif total_score >= 18:
+                                st.warning("👍 **Good start!** Review the material.")
+                            else:
+                                st.error("📚 **Keep learning!** Practice more.")
+
+                            st.info("Your teacher can see your results. Wait for approval if you want to retake the test.")
+                            
+                            # Clear the quiz
+                            st.session_state.quiz_started = False
+                            st.session_state.execution_history = []
+                    else:
+                        st.warning("⚠️ Please write some code first!")
+        
+        with col2:
+            st.markdown("### 🔍 Test Results")
+            
+            if st.session_state.execution_history:
+                latest = st.session_state.execution_history[-1]
                 
-                if not student_code.strip():
-                    st.warning(f"❌ Q{i+31}: No code submitted")
-                    continue
-                
-                # Execute and test the code
-                is_correct, output, error = execute_code_safely(student_code, q_data['test_cases'])
-                
-                if is_correct:
-                    cw_score += 1
-                    st.success(f"✅ Q{i+31}: Correct!")
+                if latest["success"]:
+                    st.success("✅ Code executed successfully!")
+                    
+                    # Show first 20 lines of output
+                    output_lines = latest["output"].strip().split("\n")
+                    preview_lines = output_lines[:20]
+                    
+                    st.text("Output (first 20 lines):")
+                    st.code("\n".join(preview_lines), language="text")
+                    
+                    if len(output_lines) > 20:
+                        st.caption(f"... and {len(output_lines) - 20} more lines")
+                    
+                    st.info(f"Total lines printed: {len(output_lines)}")
                 else:
-                    st.error(f"❌ Q{i+31}: {error if error else 'Incorrect'}")
-                    if output:
-                        st.code(f"Output: {output}", language="text")
-            
-            score += cw_score
-
-            student_name = st.session_state.get("student_name", name)
-            student_age = st.session_state.get("student_age", age)
-            results = st.session_state.results
-
-            if student_name in results["Name"].values:
-                results.loc[results["Name"] == student_name, ["Age", "Score", "Can_Retake"]] = [student_age, score, False]
+                    st.error("❌ Error in code:")
+                    st.code(latest["error"], language="text")
+                
+                st.caption(f"Total test runs: {len(st.session_state.execution_history)}")
             else:
-                new_row = pd.DataFrame([{"Name": student_name, "Age": student_age, "Score": score, "Can_Retake": False}])
-                results = pd.concat([results, new_row], ignore_index=True)
-
-            st.session_state.results = results
-            st.session_state.quiz_started = False
-
-            st.balloons()
-            st.success(f"🎉 {student_name}, your score is **{score}/40**")
-            st.info(f"Part 1 (MC): {sum(1 for i, (_, _, _, c) in enumerate(mc_questions) if mc_answers[i] == c)}/20 | "
-                   f"Part 2 (Output): {sum(1 for i, (_, _, _, c) in enumerate(code_output_questions) if co_answers[i] == c)}/10 | "
-                   f"Part 3 (Writing): {cw_score}/10")
-
-            if score >= 36:
-                st.success("🌟 **Excellent!** You've mastered the basics!")
-            elif score >= 30:
-                st.info("👏 **Great job!** Review a few concepts.")
-            elif score >= 24:
-                st.warning("👍 **Good start!** Keep practicing.")
-            else:
-                st.error("📚 **Review the material and try again.**")
-
-            st.info("Your teacher can see your results. Wait for approval if you want to retake the test.")
+                st.info("👈 Click 'Test Run' to see your code output here")
+                st.markdown("""
+                **Tips:**
+                - Use a for loop with range(1, 101)
+                - Check divisibility with % operator
+                - Use if/elif/else statements
+                - Print each result on a new line
+                """)
 
 # =====================================================================
 # 👩‍🏫 TEACHER SIDE
