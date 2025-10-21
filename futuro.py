@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import sys
+from io import StringIO
 
 # --- Page config ---
 st.set_page_config(page_title="Python Quiz - Futuro AI", page_icon="🎓", layout="centered")
@@ -15,6 +17,85 @@ p[dir='rtl'] {
 }
 </style>
 """, unsafe_allow_html=True)
+
+# --- Safe Code Execution Function ---
+def execute_code_safely(code, test_cases):
+    """
+    Execute student code and check against test cases
+    Returns: (is_correct, output, error_message)
+    """
+    try:
+        # Create a clean namespace for execution
+        namespace = {}
+        
+        # Capture stdout
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        
+        # Execute the code
+        exec(code, namespace)
+        
+        # Get the output
+        output = sys.stdout.getvalue()
+        sys.stdout = old_stdout
+        
+        # Check against test cases
+        for test_case in test_cases:
+            if test_case['type'] == 'variable':
+                # Check if variable exists and has correct value
+                var_name = test_case['var_name']
+                expected = test_case['expected']
+                if var_name in namespace:
+                    actual = namespace[var_name]
+                    if actual == expected or str(actual) == str(expected):
+                        return True, output, None
+                    else:
+                        return False, output, f"Variable '{var_name}' has wrong value"
+                else:
+                    return False, output, f"Variable '{var_name}' not found"
+            
+            elif test_case['type'] == 'function':
+                # Check if function exists and works correctly
+                func_name = test_case['func_name']
+                if func_name in namespace and callable(namespace[func_name]):
+                    func = namespace[func_name]
+                    # Test with provided inputs
+                    for inp, expected_output in test_case['tests']:
+                        try:
+                            result = func(*inp) if isinstance(inp, tuple) else func(inp)
+                            if result != expected_output:
+                                return False, output, f"Function returned {result}, expected {expected_output}"
+                        except Exception as e:
+                            return False, output, f"Function error: {str(e)}"
+                    return True, output, None
+                else:
+                    return False, output, f"Function '{func_name}' not found or not callable"
+            
+            elif test_case['type'] == 'output':
+                # Check printed output
+                expected_output = test_case['expected']
+                if expected_output in output or output.strip() == expected_output.strip():
+                    return True, output, None
+                else:
+                    return False, output, f"Output doesn't match expected"
+            
+            elif test_case['type'] == 'list_comprehension':
+                # Check if specific variable contains correct list
+                var_name = test_case['var_name']
+                expected = test_case['expected']
+                if var_name in namespace:
+                    if namespace[var_name] == expected:
+                        return True, output, None
+                    else:
+                        return False, output, f"List '{var_name}' has wrong values"
+                else:
+                    return False, output, f"Variable '{var_name}' not found"
+        
+        return False, output, "No test cases matched"
+        
+    except Exception as e:
+        sys.stdout = old_stdout
+        return False, "", f"Error: {str(e)}"
 
 # --- Initialize session data ---
 if "results" not in st.session_state:
@@ -187,17 +268,104 @@ if role == "Student":
              ["[1, 2, 3]", "[1, 4, 9]", "[2, 4, 6]", "[1, 4, 9, 16]"], "[1, 4, 9]")
         ]
 
+        # NEW: Code writing questions with test cases
         code_writing_questions = [
-            ("Create a list called colors with three color names.", "أنشئ قائمة اسمها colors بها ثلاثة أسماء ألوان.", ["colors", "=", "["]),
-            ("Write a for loop that prints numbers 1 through 5.", "اكتب حلقة for تطبع الأرقام من 1 إلى 5.", ["for", "range", "1", "6"]),
-            ("Create a dictionary called person with keys 'name' and 'age'.", "أنشئ قاموسًا اسمه person بمفاتيح 'name' و 'age'.", ["person", "=", "{", "name", "age"]),
-            ("Write an if statement that checks if a variable score is greater than 90.", "اكتب عبارة if تفحص إذا كان المتغير score أكبر من 90.", ["if", "score", ">", "90"]),
-            ("Write a function called add_numbers that takes two parameters and returns their sum.", "اكتب دالة اسمها add_numbers تأخذ معاملين وتُرجع مجموعهما.", ["def", "add_numbers", "return"]),
-            ("Create a list comprehension that generates squares of numbers 1-10.", "أنشئ list comprehension يولد مربعات الأرقام من 1 إلى 10.", ["**2", "for", "range", "1", "11"]),
-            ("Write a while loop that counts from 1 to 3.", "اكتب حلقة while تعد من 1 إلى 3.", ["while", "<=", "3"]),
-            ("Access the first element of a list called fruits.", "اصل إلى العنصر الأول من قائمة اسمها fruits.", ["fruits[0]"]),
-            ("Add a new key-value pair to a dictionary called car: key='color', value='red'.", "أضف زوج مفتاح-قيمة جديد لقاموس اسمه car: المفتاح='color'، القيمة='red'.", ["car", "color", "red"]),
-            ("Write code to get user input and store it in a variable called name.", "اكتب كودًا للحصول على إدخال المستخدم وتخزينه في متغير اسمه name.", ["name", "=", "input"])
+            {
+                "question_en": "Create a list called colors with three color names (e.g., 'red', 'blue', 'green')",
+                "question_ar": "أنشئ قائمة اسمها colors بها ثلاثة أسماء ألوان",
+                "test_cases": [{
+                    "type": "variable",
+                    "var_name": "colors",
+                    "expected": lambda x: isinstance(x, list) and len(x) == 3
+                }],
+                "hint": "colors = ['red', 'blue', 'green']"
+            },
+            {
+                "question_en": "Write a for loop that prints numbers 1 through 5",
+                "question_ar": "اكتب حلقة for تطبع الأرقام من 1 إلى 5",
+                "test_cases": [{
+                    "type": "output",
+                    "expected": "1\n2\n3\n4\n5"
+                }],
+                "hint": "for i in range(1, 6):\n    print(i)"
+            },
+            {
+                "question_en": "Create a dictionary called person with keys 'name' and 'age' (any values)",
+                "question_ar": "أنشئ قاموسًا اسمه person بمفاتيح 'name' و 'age'",
+                "test_cases": [{
+                    "type": "variable",
+                    "var_name": "person",
+                    "expected": lambda x: isinstance(x, dict) and 'name' in x and 'age' in x
+                }],
+                "hint": "person = {'name': 'Ali', 'age': 25}"
+            },
+            {
+                "question_en": "Create a variable score = 95, then write an if statement that prints 'Passed' if score > 90",
+                "question_ar": "أنشئ متغير score = 95، ثم اكتب عبارة if تطبع 'Passed' إذا كان score > 90",
+                "test_cases": [{
+                    "type": "output",
+                    "expected": "Passed"
+                }],
+                "hint": "score = 95\nif score > 90:\n    print('Passed')"
+            },
+            {
+                "question_en": "Write a function called add_numbers that takes two parameters and returns their sum",
+                "question_ar": "اكتب دالة اسمها add_numbers تأخذ معاملين وتُرجع مجموعهما",
+                "test_cases": [{
+                    "type": "function",
+                    "func_name": "add_numbers",
+                    "tests": [((3, 5), 8), ((10, 20), 30), ((0, 0), 0)]
+                }],
+                "hint": "def add_numbers(a, b):\n    return a + b"
+            },
+            {
+                "question_en": "Create a list comprehension called squares that generates squares of numbers 1-5",
+                "question_ar": "أنشئ list comprehension اسمه squares يولد مربعات الأرقام من 1 إلى 5",
+                "test_cases": [{
+                    "type": "list_comprehension",
+                    "var_name": "squares",
+                    "expected": [1, 4, 9, 16, 25]
+                }],
+                "hint": "squares = [x**2 for x in range(1, 6)]"
+            },
+            {
+                "question_en": "Write a while loop that prints numbers 1, 2, 3",
+                "question_ar": "اكتب حلقة while تطبع الأرقام 1، 2، 3",
+                "test_cases": [{
+                    "type": "output",
+                    "expected": "1\n2\n3"
+                }],
+                "hint": "i = 1\nwhile i <= 3:\n    print(i)\n    i += 1"
+            },
+            {
+                "question_en": "Create a list fruits = ['apple', 'banana', 'orange'], then print the first element",
+                "question_ar": "أنشئ قائمة fruits = ['apple', 'banana', 'orange']، ثم اطبع العنصر الأول",
+                "test_cases": [{
+                    "type": "output",
+                    "expected": "apple"
+                }],
+                "hint": "fruits = ['apple', 'banana', 'orange']\nprint(fruits[0])"
+            },
+            {
+                "question_en": "Create a dictionary car = {'brand': 'Toyota'}, then add key 'color' with value 'red'",
+                "question_ar": "أنشئ قاموس car = {'brand': 'Toyota'}، ثم أضف مفتاح 'color' بقيمة 'red'",
+                "test_cases": [{
+                    "type": "variable",
+                    "var_name": "car",
+                    "expected": lambda x: isinstance(x, dict) and x.get('color') == 'red' and x.get('brand') == 'Toyota'
+                }],
+                "hint": "car = {'brand': 'Toyota'}\ncar['color'] = 'red'"
+            },
+            {
+                "question_en": "Write code to create a variable name = 'Ahmed' (no input needed)",
+                "question_ar": "اكتب كودًا لإنشاء متغير name = 'Ahmed'",
+                "test_cases": [{
+                    "type": "variable",
+                    "var_name": "name",
+                    "expected": lambda x: isinstance(x, str) and len(x) > 0
+                }],
+                "hint": "name = 'Ahmed'"
+            }
         ]
 
         with st.form("quiz_form"):
@@ -221,27 +389,53 @@ if role == "Student":
 
             st.write("---")
             st.subheader("✍️ Part 3: Code Writing (10 questions)")
+            st.info("⚡ Your code will be executed and tested automatically!")
             cw_answers = []
-            for i, (q_en, q_ar, keywords) in enumerate(code_writing_questions):
-                st.write(f"**Q{i+31}. {q_en}**")
-                st.markdown(f"<p dir='rtl'>{q_ar}</p>", unsafe_allow_html=True)
-                answer = st.text_area("Your code:", key=f"cw_{i}", height=80)
+            for i, q_data in enumerate(code_writing_questions):
+                st.write(f"**Q{i+31}. {q_data['question_en']}**")
+                st.markdown(f"<p dir='rtl'>{q_data['question_ar']}</p>", unsafe_allow_html=True)
+                answer = st.text_area("Your code:", key=f"cw_{i}", height=100, 
+                                     placeholder=f"Example: {q_data['hint']}")
                 cw_answers.append(answer)
 
             submitted = st.form_submit_button("✅ Submit All Answers", type="primary")
 
         if submitted:
             score = 0
+            
+            # Grade Part 1: Multiple Choice
             for i, (_, _, _, correct) in enumerate(mc_questions):
                 if mc_answers[i] == correct:
                     score += 1
+            
+            # Grade Part 2: Code Output
             for i, (_, _, _, correct) in enumerate(code_output_questions):
                 if co_answers[i] == correct:
                     score += 1
-            for i, (_, _, keywords) in enumerate(code_writing_questions):
-                answer_lower = cw_answers[i].lower()
-                if all(kw.lower() in answer_lower for kw in keywords):
-                    score += 1
+            
+            # Grade Part 3: Code Writing (with execution)
+            st.write("---")
+            st.subheader("🔍 Part 3 Detailed Results:")
+            cw_score = 0
+            for i, q_data in enumerate(code_writing_questions):
+                student_code = cw_answers[i]
+                
+                if not student_code.strip():
+                    st.warning(f"❌ Q{i+31}: No code submitted")
+                    continue
+                
+                # Execute and test the code
+                is_correct, output, error = execute_code_safely(student_code, q_data['test_cases'])
+                
+                if is_correct:
+                    cw_score += 1
+                    st.success(f"✅ Q{i+31}: Correct!")
+                else:
+                    st.error(f"❌ Q{i+31}: {error if error else 'Incorrect'}")
+                    if output:
+                        st.code(f"Output: {output}", language="text")
+            
+            score += cw_score
 
             student_name = st.session_state.get("student_name", name)
             student_age = st.session_state.get("student_age", age)
@@ -258,6 +452,9 @@ if role == "Student":
 
             st.balloons()
             st.success(f"🎉 {student_name}, your score is **{score}/40**")
+            st.info(f"Part 1 (MC): {sum(1 for i, (_, _, _, c) in enumerate(mc_questions) if mc_answers[i] == c)}/20 | "
+                   f"Part 2 (Output): {sum(1 for i, (_, _, _, c) in enumerate(code_output_questions) if co_answers[i] == c)}/10 | "
+                   f"Part 3 (Writing): {cw_score}/10")
 
             if score >= 36:
                 st.success("🌟 **Excellent!** You've mastered the basics!")
