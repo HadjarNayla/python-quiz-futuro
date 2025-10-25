@@ -1,19 +1,17 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
-from streamlit_drawable_canvas import st_canvas
 from datetime import datetime
 import io
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib import colors
-from reportlab.pdfgen import canvas as pdf_canvas
-from reportlab.lib.utils import ImageReader
 import sys
 from io import StringIO
 import traceback
+import base64
 
 # Page configuration
 st.set_page_config(
@@ -105,6 +103,9 @@ while True:
 print("\\n🤖 ROBOT: [Powering down...] zzz...")
 '''
 
+if 'uploaded_drawing' not in st.session_state:
+    st.session_state.uploaded_drawing = None
+
 # Header
 st.title("🤖 AI Robot Homework Helper")
 st.subheader("✨ Lesson 1: What is AI? - Interactive Coding & Drawing")
@@ -158,53 +159,51 @@ if option in ["💻 Option 1: Improve Your Robot (Coding)", "🚀 Both Options!"
             st.session_state.code_output = ""
             st.session_state.code_error = ""
             
-            # Capture output
-            old_stdout = sys.stdout
-            old_stdin = sys.stdin
-            redirected_output = StringIO()
-            sys.stdout = redirected_output
+            st.info("📝 Analyzing your code structure...")
             
-            # Simulate inputs for testing (without actual input() calls)
-            test_mode = st.checkbox("🧪 Test Mode (auto-simulate user inputs)", value=True)
-            
-            if test_mode:
-                st.info("📝 Test mode: We'll check if your code structure is correct without running the interactive loop.")
+            try:
+                # Check for syntax errors
+                compile(user_code, '<string>', 'exec')
+                st.session_state.code_output = "✅ Code syntax is correct!\n\n"
                 
-                try:
-                    # Check for syntax errors
-                    compile(user_code, '<string>', 'exec')
-                    st.session_state.code_output = "✅ Code syntax is correct!\n\n"
-                    
-                    # Count the number of elif statements
-                    elif_count = user_code.count("elif")
-                    if_count = user_code.count("if ")
-                    
-                    st.session_state.code_output += f"📊 Code Analysis:\n"
-                    st.session_state.code_output += f"  • Found {if_count} 'if' statement(s)\n"
-                    st.session_state.code_output += f"  • Found {elif_count} 'elif' statement(s)\n"
-                    st.session_state.code_output += f"  • Print statements: {user_code.count('print(')}\n\n"
-                    
-                    if elif_count >= 5:
-                        st.session_state.code_output += "🌟 Great job! You've added new responses!\n"
-                    else:
-                        st.session_state.code_output += "💡 Try adding at least 2 more 'elif' statements for new responses!\n"
-                    
-                    # Check for specific keywords
-                    keywords = ["food", "fact", "subject", "joke", "color", "hobby"]
-                    found_keywords = [kw for kw in keywords if kw in user_code.lower()]
-                    
-                    if found_keywords:
-                        st.session_state.code_output += f"\n✨ Detected new topics: {', '.join(found_keywords)}"
-                    
-                except SyntaxError as e:
-                    st.session_state.code_error = f"❌ Syntax Error at line {e.lineno}:\n{str(e)}"
-                except Exception as e:
-                    st.session_state.code_error = f"❌ Error: {str(e)}\n\n{traceback.format_exc()}"
-            else:
-                st.warning("⚠️ Interactive mode disabled in Streamlit. Use Test Mode to validate your code.")
-            
-            sys.stdout = old_stdout
-            sys.stdin = old_stdin
+                # Count the number of elif statements
+                elif_count = user_code.count("elif")
+                if_count = user_code.count("if ")
+                print_count = user_code.count("print(")
+                
+                st.session_state.code_output += f"📊 Code Analysis:\n"
+                st.session_state.code_output += f"  • Found {if_count} 'if' statement(s)\n"
+                st.session_state.code_output += f"  • Found {elif_count} 'elif' statement(s)\n"
+                st.session_state.code_output += f"  • Print statements: {print_count}\n\n"
+                
+                if elif_count >= 5:
+                    st.session_state.code_output += "🌟 Great job! You've added new responses!\n"
+                elif elif_count >= 3:
+                    st.session_state.code_output += "👍 Good start! Try adding 1-2 more responses!\n"
+                else:
+                    st.session_state.code_output += "💡 Try adding at least 2 more 'elif' statements for new responses!\n"
+                
+                # Check for specific keywords
+                keywords = ["food", "fact", "subject", "joke", "color", "hobby", "age", "sport"]
+                found_keywords = [kw for kw in keywords if kw in user_code.lower()]
+                
+                if found_keywords:
+                    st.session_state.code_output += f"\n✨ Detected new topics: {', '.join(found_keywords)}\n"
+                
+                # Check for bonus features
+                if "import random" in user_code or "random." in user_code:
+                    st.session_state.code_output += "\n🎲 BONUS: Random responses detected!\n"
+                
+                if "user_name" in user_code or "name =" in user_code:
+                    st.session_state.code_output += "🎯 BONUS: Name remembering detected!\n"
+                
+                st.session_state.code_output += "\n✅ Your code is ready to use!"
+                
+            except SyntaxError as e:
+                st.session_state.code_error = f"❌ Syntax Error at line {e.lineno}:\n{str(e)}\n\n"
+                st.session_state.code_error += "💡 Check for missing colons (:), parentheses (), or quotes."
+            except Exception as e:
+                st.session_state.code_error = f"❌ Error: {str(e)}"
     
     with col2:
         if st.button("🔄 Reset Code"):
@@ -299,40 +298,39 @@ print("\\n🤖 ROBOT: [Powering down...] zzz...")
         height=100
     )
 
-# Option 2: Creative Design with Drawing Canvas
+# Option 2: Creative Design with Drawing Upload
 if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"]:
     st.markdown("---")
     st.header("🎨 Option 2: Design Your Dream Robot")
     
-    st.subheader("🖌️ Draw Your Robot Here!")
-    st.write("Use the tools below to draw your dream robot:")
+    st.subheader("🖌️ Draw Your Robot!")
     
-    col1, col2 = st.columns([3, 1])
-    
-    with col2:
-        drawing_mode = st.selectbox(
-            "Drawing Tool:",
-            ("freedraw", "line", "rect", "circle", "transform")
-        )
-        stroke_width = st.slider("Brush Size:", 1, 25, 3)
-        stroke_color = st.color_picker("Color:", "#000000")
-        bg_color = st.color_picker("Background:", "#FFFFFF")
+    col1, col2 = st.columns([2, 1])
     
     with col1:
-        # Create canvas
-        canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",
-            stroke_width=stroke_width,
-            stroke_color=stroke_color,
-            background_color=bg_color,
-            height=400,
-            width=600,
-            drawing_mode=drawing_mode,
-            key="canvas",
+        st.write("**Option A: Upload a drawing** (draw on paper and take a photo)")
+        uploaded_file = st.file_uploader(
+            "Upload your robot drawing (PNG, JPG, JPEG)",
+            type=['png', 'jpg', 'jpeg'],
+            help="Draw your robot on paper, take a photo, and upload it here!"
         )
+        
+        if uploaded_file is not None:
+            canvas_image = Image.open(uploaded_file)
+            st.session_state.uploaded_drawing = canvas_image
+            st.image(canvas_image, caption="Your Robot Drawing", use_column_width=True)
     
-    if canvas_result.image_data is not None:
-        canvas_image = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
+    with col2:
+        st.write("**Option B: Describe your robot**")
+        robot_description = st.text_area(
+            "Describe what your robot looks like:",
+            placeholder="My robot is blue with red eyes, has wheels for legs, mechanical arms with 3 fingers...",
+            height=200,
+            help="If you can't upload a drawing, describe it in detail!"
+        )
+        
+        if robot_description:
+            st.info(f"📝 Your description will be included in the PDF!")
     
     st.markdown("---")
     st.subheader("❓ Answer These Questions About Your Robot:")
@@ -363,6 +361,8 @@ if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Op
             placeholder="Example: It can understand emotions and...",
             height=120
         )
+    
+    creative_responses['description'] = robot_description
 
 # Bonus Challenge
 st.markdown("---")
@@ -375,7 +375,7 @@ with col1:
     if bonus1:
         bonus1_code = st.text_area(
             "Show your code for remembering names:",
-            placeholder="Example: user_name = input('What is your name?')",
+            placeholder="Example: user_name = input('What is your name?')\nprint(f'Hi {user_name}!')",
             height=100,
             key="bonus1"
         )
@@ -386,7 +386,7 @@ with col2:
     if bonus2:
         bonus2_code = st.text_area(
             "Show your code for random responses:",
-            placeholder="Example: import random\nresponses = ['Hi!', 'Hello!', 'Hey!']",
+            placeholder="Example: import random\nresponses = ['Hi!', 'Hello!', 'Hey!']\nprint(random.choice(responses))",
             height=100,
             key="bonus2"
         )
@@ -400,177 +400,211 @@ if st.button("📄 Create My Homework PDF!", type="primary"):
         st.error("⚠️ Please enter your name first!")
     else:
         with st.spinner("🎨 Creating your beautiful PDF homework sheet..."):
-            # Create PDF
-            buffer = io.BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=letter)
-            story = []
-            styles = getSampleStyleSheet()
-            
-            # Custom styles
-            title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
-                fontSize=24,
-                textColor=colors.HexColor('#667eea'),
-                spaceAfter=30,
-                alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
-            )
-            
-            heading_style = ParagraphStyle(
-                'CustomHeading',
-                parent=styles['Heading2'],
-                fontSize=18,
-                textColor=colors.HexColor('#764ba2'),
-                spaceAfter=12,
-                spaceBefore=12,
-                fontName='Helvetica-Bold'
-            )
-            
-            normal_style = ParagraphStyle(
-                'CustomNormal',
-                parent=styles['Normal'],
-                fontSize=11,
-                spaceAfter=10
-            )
-            
-            # Title
-            story.append(Paragraph("🤖 AI ROBOT HOMEWORK", title_style))
-            story.append(Paragraph("Lesson 1: What is AI?", heading_style))
-            story.append(Spacer(1, 0.3*inch))
-            
-            # Student Info Table
-            student_data = [
-                ['Student Name:', student_name, 'Age:', str(student_age)],
-                ['Date:', str(homework_date), '', '']
-            ]
-            student_table = Table(student_data, colWidths=[1.5*inch, 2.5*inch, 0.8*inch, 1*inch])
-            student_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0f4ff')),
-                ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#764ba2')),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 11),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-                ('TOPPADDING', (0, 0), (-1, -1), 12),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#667eea'))
-            ]))
-            story.append(student_table)
-            story.append(Spacer(1, 0.4*inch))
-            
-            # Option 1: Coding Section
-            if option in ["💻 Option 1: Improve Your Robot (Coding)", "🚀 Both Options!"]:
-                story.append(Paragraph("💻 OPTION 1: IMPROVE YOUR ROBOT", heading_style))
-                story.append(Spacer(1, 0.1*inch))
+            try:
+                # Create PDF
+                buffer = io.BytesIO()
+                doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
+                story = []
+                styles = getSampleStyleSheet()
                 
-                story.append(Paragraph("<b>What I Added:</b>", normal_style))
-                for key, value in coding_responses.items():
-                    if key != 'notes' and value:
-                        icon = {'food': '🍕', 'fact': '🧠', 'subject': '📚', 'joke': '😄'}.get(key, '✓')
-                        story.append(Paragraph(f"{icon} {key.capitalize()} response", normal_style))
+                # Custom styles
+                title_style = ParagraphStyle(
+                    'CustomTitle',
+                    parent=styles['Heading1'],
+                    fontSize=24,
+                    textColor=colors.HexColor('#667eea'),
+                    spaceAfter=20,
+                    alignment=TA_CENTER,
+                    fontName='Helvetica-Bold'
+                )
                 
-                if coding_responses.get('notes'):
-                    story.append(Spacer(1, 0.1*inch))
-                    story.append(Paragraph("<b>Additional Features:</b>", normal_style))
-                    story.append(Paragraph(coding_responses['notes'], normal_style))
+                heading_style = ParagraphStyle(
+                    'CustomHeading',
+                    parent=styles['Heading2'],
+                    fontSize=16,
+                    textColor=colors.HexColor('#764ba2'),
+                    spaceAfter=12,
+                    spaceBefore=12,
+                    fontName='Helvetica-Bold'
+                )
                 
+                normal_style = ParagraphStyle(
+                    'CustomNormal',
+                    parent=styles['Normal'],
+                    fontSize=10,
+                    spaceAfter=8
+                )
+                
+                code_style = ParagraphStyle(
+                    'Code',
+                    parent=styles['Normal'],
+                    fontSize=8,
+                    fontName='Courier',
+                    spaceAfter=2,
+                    leftIndent=20
+                )
+                
+                # Title
+                story.append(Paragraph("🤖 AI ROBOT HOMEWORK", title_style))
+                story.append(Paragraph("Lesson 1: What is AI?", heading_style))
                 story.append(Spacer(1, 0.2*inch))
-                story.append(Paragraph("<b>My Robot Code:</b>", normal_style))
                 
-                # Add code with smaller font
-                code_lines = st.session_state.user_code.split('\n')
-                for line in code_lines[:30]:  # Limit to first 30 lines
-                    if line.strip():
-                        story.append(Paragraph(f"<font name='Courier' size='8'>{line.replace('<', '&lt;').replace('>', '&gt;')}</font>", normal_style))
-                
+                # Student Info Table
+                student_data = [
+                    ['Student Name:', student_name, 'Age:', str(student_age)],
+                    ['Date:', str(homework_date), '', '']
+                ]
+                student_table = Table(student_data, colWidths=[1.5*inch, 2.5*inch, 0.8*inch, 1*inch])
+                student_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0f4ff')),
+                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#764ba2')),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                    ('TOPPADDING', (0, 0), (-1, -1), 10),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#667eea'))
+                ]))
+                story.append(student_table)
                 story.append(Spacer(1, 0.3*inch))
-            
-            # Option 2: Creative Design Section
-            if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"]:
-                if option == "🚀 Both Options!":
-                    story.append(PageBreak())
                 
-                story.append(Paragraph("🎨 OPTION 2: DESIGN YOUR DREAM ROBOT", heading_style))
-                story.append(Spacer(1, 0.2*inch))
-                
-                # Add drawing if available
-                if canvas_image:
-                    img_buffer = io.BytesIO()
-                    canvas_image.save(img_buffer, format='PNG')
-                    img_buffer.seek(0)
+                # Option 1: Coding Section
+                if option in ["💻 Option 1: Improve Your Robot (Coding)", "🚀 Both Options!"]:
+                    story.append(Paragraph("💻 OPTION 1: IMPROVE YOUR ROBOT", heading_style))
+                    story.append(Spacer(1, 0.1*inch))
                     
-                    img = RLImage(img_buffer, width=4*inch, height=2.5*inch)
-                    story.append(img)
+                    story.append(Paragraph("<b>What I Added:</b>", normal_style))
+                    for key, value in coding_responses.items():
+                        if key != 'notes' and value:
+                            icon = {'food': '🍕', 'fact': '🧠', 'subject': '📚', 'joke': '😄'}.get(key, '✓')
+                            story.append(Paragraph(f"• {icon} {key.capitalize()} response", normal_style))
+                    
+                    if coding_responses.get('notes'):
+                        story.append(Spacer(1, 0.1*inch))
+                        story.append(Paragraph("<b>Additional Features:</b>", normal_style))
+                        story.append(Paragraph(coding_responses['notes'], normal_style))
+                    
+                    story.append(Spacer(1, 0.15*inch))
+                    story.append(Paragraph("<b>My Robot Code:</b>", normal_style))
+                    story.append(Spacer(1, 0.05*inch))
+                    
+                    # Add code with line numbers
+                    code_lines = st.session_state.user_code.split('\n')
+                    for i, line in enumerate(code_lines[:40], 1):  # Limit to first 40 lines
+                        clean_line = line.replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
+                        story.append(Paragraph(f"{i:3d} | {clean_line}", code_style))
+                    
+                    if len(code_lines) > 40:
+                        story.append(Paragraph(f"... ({len(code_lines) - 40} more lines)", code_style))
+                    
                     story.append(Spacer(1, 0.2*inch))
                 
-                # Questions and answers
-                questions = [
-                    ("🤖 Robot's Name:", creative_responses.get('name', '')),
-                    ("⚙️ What does it do:", creative_responses.get('function', '')),
-                    ("💝 How it helps people:", creative_responses.get('help', '')),
-                    ("✨ What makes it special:", creative_responses.get('special', ''))
-                ]
-                
-                for q, a in questions:
-                    if a:
-                        story.append(Paragraph(f"<b>{q}</b>", normal_style))
-                        story.append(Paragraph(a, normal_style))
+                # Option 2: Creative Design Section
+                if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"]:
+                    if option == "🚀 Both Options!":
+                        story.append(PageBreak())
+                    
+                    story.append(Paragraph("🎨 OPTION 2: DESIGN YOUR DREAM ROBOT", heading_style))
+                    story.append(Spacer(1, 0.15*inch))
+                    
+                    # Add drawing if available
+                    if st.session_state.uploaded_drawing:
+                        img_buffer = io.BytesIO()
+                        # Resize image to fit
+                        img = st.session_state.uploaded_drawing
+                        img.thumbnail((450, 300), Image.Resampling.LANCZOS)
+                        img.save(img_buffer, format='PNG')
+                        img_buffer.seek(0)
+                        
+                        rl_img = RLImage(img_buffer, width=4*inch, height=2.5*inch)
+                        story.append(rl_img)
+                        story.append(Spacer(1, 0.15*inch))
+                    
+                    # Add description if provided
+                    if creative_responses.get('description'):
+                        story.append(Paragraph("<b>Robot Description:</b>", normal_style))
+                        story.append(Paragraph(creative_responses['description'], normal_style))
                         story.append(Spacer(1, 0.1*inch))
-            
-            # Bonus Challenge
-            if bonus1 or bonus2:
-                story.append(Spacer(1, 0.2*inch))
-                story.append(Paragraph("🌟 BONUS CHALLENGE", heading_style))
+                    
+                    # Questions and answers
+                    questions = [
+                        ("🤖 Robot's Name:", creative_responses.get('name', '')),
+                        ("⚙️ What does it do:", creative_responses.get('function', '')),
+                        ("💝 How it helps people:", creative_responses.get('help', '')),
+                        ("✨ What makes it special:", creative_responses.get('special', ''))
+                    ]
+                    
+                    for q, a in questions:
+                        if a:
+                            story.append(Paragraph(f"<b>{q}</b>", normal_style))
+                            story.append(Paragraph(a, normal_style))
+                            story.append(Spacer(1, 0.08*inch))
                 
-                if bonus1:
-                    story.append(Paragraph("🎯 <b>Remember User Name</b>", normal_style))
-                    if bonus1_code:
-                        story.append(Paragraph(f"<font name='Courier' size='9'>{bonus1_code}</font>", normal_style))
-                    story.append(Spacer(1, 0.1*inch))
+                # Bonus Challenge
+                if bonus1 or bonus2:
+                    story.append(Spacer(1, 0.15*inch))
+                    story.append(Paragraph("🌟 BONUS CHALLENGE", heading_style))
+                    
+                    if bonus1:
+                        story.append(Paragraph("🎯 <b>Remember User Name</b>", normal_style))
+                        if bonus1_code:
+                            for line in bonus1_code.split('\n'):
+                                clean_line = line.replace('<', '&lt;').replace('>', '&gt;')
+                                story.append(Paragraph(clean_line, code_style))
+                        story.append(Spacer(1, 0.08*inch))
+                    
+                    if bonus2:
+                        story.append(Paragraph("🎲 <b>Random Responses</b>", normal_style))
+                        if bonus2_code:
+                            for line in bonus2_code.split('\n'):
+                                clean_line = line.replace('<', '&lt;').replace('>', '&gt;')
+                                story.append(Paragraph(clean_line, code_style))
                 
-                if bonus2:
-                    story.append(Paragraph("🎲 <b>Random Responses</b>", normal_style))
-                    if bonus2_code:
-                        story.append(Paragraph(f"<font name='Courier' size='9'>{bonus2_code}</font>", normal_style))
-            
-            # Footer
-            story.append(Spacer(1, 0.5*inch))
-            footer_style = ParagraphStyle(
-                'Footer',
-                parent=styles['Normal'],
-                fontSize=12,
-                textColor=colors.HexColor('#764ba2'),
-                alignment=TA_CENTER,
-                fontName='Helvetica-Bold'
-            )
-            story.append(Paragraph("📚 Bring to Next Class! 🚀", footer_style))
-            story.append(Paragraph("Have fun learning AI!", footer_style))
-            
-            # Build PDF
-            doc.build(story)
-            buffer.seek(0)
-            
-            # Success message
-            st.success("✅ Your homework PDF is ready!")
-            
-            # Download button
-            st.download_button(
-                label="💾 Download Your Homework PDF",
-                data=buffer,
-                file_name=f"AI_Homework_{student_name.replace(' ', '_')}.pdf",
-                mime="application/pdf"
-            )
-            
-            st.balloons()
+                # Footer
+                story.append(Spacer(1, 0.4*inch))
+                footer_style = ParagraphStyle(
+                    'Footer',
+                    parent=styles['Normal'],
+                    fontSize=12,
+                    textColor=colors.HexColor('#764ba2'),
+                    alignment=TA_CENTER,
+                    fontName='Helvetica-Bold'
+                )
+                story.append(Paragraph("📚 Bring to Next Class! 🚀", footer_style))
+                story.append(Spacer(1, 0.1*inch))
+                story.append(Paragraph("Have fun learning AI!", footer_style))
+                
+                # Build PDF
+                doc.build(story)
+                buffer.seek(0)
+                
+                # Success message
+                st.success("✅ Your homework PDF is ready!")
+                
+                # Download button
+                st.download_button(
+                    label="💾 Download Your Homework PDF",
+                    data=buffer,
+                    file_name=f"AI_Homework_{student_name.replace(' ', '_')}_{homework_date}.pdf",
+                    mime="application/pdf",
+                    type="primary"
+                )
+                
+                st.balloons()
+                
+            except Exception as e:
+                st.error(f"❌ Error creating PDF: {str(e)}")
+                st.error("Please make sure you've filled in all required fields.")
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: white; padding: 20px;'>
     <h3>🎓 Tips for Success:</h3>
-    <p>✓ Test your code in the editor above!</p>
-    <p>✓ Draw your robot with colors and details!</p>
+    <p>✓ Test your code with the "Run Code" button!</p>
+    <p>✓ Upload a clear photo of your robot drawing!</p>
     <p>✓ Be creative with your responses!</p>
+    <p>✓ Answer all questions completely!</p>
     <p>✓ Download your PDF when you're done!</p>
 </div>
 """, unsafe_allow_html=True)
