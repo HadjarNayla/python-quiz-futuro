@@ -5,25 +5,68 @@ import io
 # ----------------------------
 # 🏷️ APP CONFIGURATION
 # ----------------------------
-st.set_page_config(page_title="🐼 Pandas from 0 to Hero", layout="wide")
+st.set_page_config(page_title="🐼 Pandas from 0 to Hero | Futuro School", layout="wide")
+
+# ----------------------------
+# 🎓 HEADER & BRANDING
+# ----------------------------
 st.title("🐼 Learn All Pandas Functions — From 0 to Hero")
-st.write("This app teaches **Pandas** step by step using your dataset. Upload a CSV file and explore every important function interactively!")
+st.markdown("### 🎓 **Futuro School** | Created by Teacher **Hadjar Nayla**")
+st.markdown("---")
+
+# Description in English
+st.markdown("""
+**Welcome to the Interactive Pandas Learning Platform!**
+
+This comprehensive educational tool is designed to teach you **Python Pandas** library step by step, from beginner to advanced level. 
+Upload your own CSV dataset and explore every important Pandas function through hands-on, interactive examples. 
+Perfect for students, data analysts, and anyone looking to master data manipulation in Python!
+
+**What you'll learn:**
+- 📊 Basic data exploration and inspection
+- 🧹 Data cleaning and preprocessing techniques
+- 🔍 Filtering, selecting, and querying data
+- 📈 Sorting, grouping, and aggregating information
+- 🧮 Advanced data manipulation functions
+- 💾 Exporting and saving your results
+""")
+
+# Description in Arabic
+st.markdown("""
+**مرحباً بك في منصة تعلم Pandas التفاعلية!**
+
+هذه الأداة التعليمية الشاملة مصممة لتعليمك مكتبة **Pandas في بايثون** خطوة بخطوة، من المستوى المبتدئ إلى المتقدم.
+قم بتحميل ملف CSV الخاص بك واستكشف كل وظائف Pandas المهمة من خلال أمثلة تفاعلية عملية.
+مثالي للطلاب، محللي البيانات، وأي شخص يرغب في إتقان معالجة البيانات في بايثون!
+
+**ما ستتعلمه:**
+- 📊 استكشاف وفحص البيانات الأساسية
+- 🧹 تقنيات تنظيف ومعالجة البيانات
+- 🔍 تصفية واختيار واستعلام البيانات
+- 📈 ترتيب وتجميع وتلخيص المعلومات
+- 🧮 وظائف معالجة البيانات المتقدمة
+- 💾 تصدير وحفظ نتائجك
+""")
+
+st.markdown("---")
 
 # ----------------------------
 # 📂 STEP 1: UPLOAD DATASET
 # ----------------------------
-st.header("📁 Step 1: Upload a CSV file")
+st.header("📁 Step 1: Upload a CSV file | الخطوة الأولى: تحميل ملف CSV")
+st.write("Upload your dataset to begin exploring Pandas functions | قم بتحميل مجموعة البيانات الخاصة بك لبدء استكشاف وظائف Pandas")
+
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.success("✅ Dataset loaded successfully!")
+    st.success("✅ Dataset loaded successfully! | تم تحميل مجموعة البيانات بنجاح!")
     st.dataframe(df.head())
 
     # ----------------------------
     # 📘 STEP 2: BASIC FUNCTIONS
     # ----------------------------
-    st.header("📘 Basic Pandas Functions")
+    st.header("📘 Basic Pandas Functions | الوظائف الأساسية")
 
     with st.expander("🔹 df.head() — View first rows"):
         st.code("df.head()", language="python")
@@ -76,7 +119,7 @@ if uploaded_file:
     # ----------------------------
     # 🧹 STEP 3: DATA CLEANING
     # ----------------------------
-    st.header("🧹 Data Cleaning Functions")
+    st.header("🧹 Data Cleaning Functions | وظائف تنظيف البيانات")
 
     with st.expander("🔹 df.dropna() — Remove missing rows"):
         st.code("df.dropna()", language="python")
@@ -103,7 +146,7 @@ if uploaded_file:
     # ----------------------------
     # 🔍 STEP 4: FILTERING & SELECTION
     # ----------------------------
-    st.header("🔍 Filtering and Selection")
+    st.header("🔍 Filtering and Selection | التصفية والاختيار")
 
     with st.expander("🔹 Select one column"):
         st.code("df['ColumnName']", language="python")
@@ -127,7 +170,7 @@ if uploaded_file:
     # ----------------------------
     # 📈 STEP 5: SORTING & GROUPING
     # ----------------------------
-    st.header("📈 Sorting and Grouping")
+    st.header("📈 Sorting and Grouping | الترتيب والتجميع")
 
     with st.expander("🔹 Sort by column"):
         st.code("df.sort_values(by='Goals', ascending=False)", language="python")
@@ -150,7 +193,7 @@ if uploaded_file:
     # ----------------------------
     # 🧮 STEP 6: ADVANCED FUNCTIONS
     # ----------------------------
-    st.header("🧮 Advanced Pandas Functions")
+    st.header("🧮 Advanced Pandas Functions | الوظائف المتقدمة")
 
     with st.expander("🔹 df.apply() — Apply custom functions"):
         st.code("df['Goals'].apply(lambda x: x * 2)", language="python")
@@ -168,12 +211,10 @@ if uploaded_file:
         st.code("pd.pivot_table(df, values='Goals', index='Club', aggfunc='mean')", language="python")
         st.write("Creates pivot tables for summarizing data easily.")
 
-   
-
     # ----------------------------
     # 💾 STEP 7: SAVE RESULTS
     # ----------------------------
-    st.header("💾 Save and Export Data")
+    st.header("💾 Save and Export Data | حفظ وتصدير البيانات")
 
     with st.expander("🔹 Save to CSV"):
         st.code("df.to_csv('output.csv', index=False)", language="python")
@@ -184,7 +225,16 @@ if uploaded_file:
         st.code("df.to_excel('output.xlsx', index=False)", language="python")
         st.write("Exports DataFrame to Excel format.")
 
+    # ----------------------------
+    # 📝 FOOTER
+    # ----------------------------
+    st.markdown("---")
+    st.markdown("### 🎓 Futuro School - Excellence in Data Science Education")
+    st.markdown("**Developed by Teacher Hadjar Nayla** | تم تطويره بواسطة المعلمة حجار نايلة")
+    st.markdown("*Empowering students with practical data analysis skills* | *تمكين الطلاب بمهارات تحليل البيانات العملية*")
+
 else:
-    st.info("👆 Please upload a CSV file to start learning Pandas!")
-
-
+    st.info("👆 Please upload a CSV file to start learning Pandas! | يرجى تحميل ملف CSV لبدء تعلم Pandas!")
+    st.markdown("---")
+    st.markdown("### 🎓 Futuro School")
+    st.markdown("**Created by Teacher Hadjar Nayla** | تم الإنشاء بواسطة المعلمة حجار نايلة")
