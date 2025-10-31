@@ -189,3 +189,4 @@ if uploaded_file:
 
 else:
     st.info("👆 Please upload a CSV file to start learning Pandas!")
+
