@@ -1,149 +1,122 @@
-# 🎓 STREAMLIT APP — Learn Pandas from 0️⃣ to 🦸 Hero
-# ---------------------------------------------------
-# 🧠 Goal:
-# Teach beginners how to explore, clean, and analyze datasets using Pandas interactively.
-# Dataset used: Football Players Dataset (2015–2024)
-# ---------------------------------------------------
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-# 🏁 App Title
-st.title("🐼 Pandas From 0️⃣ to Hero — Interactive Learning App")
-st.write("""
-Welcome! 👋  
-This app helps you **learn Pandas** step-by-step using a real dataset.
-We’ll explore, clean, and analyze football player data together ⚽.
-""")
+# -------------------------------
+# APP TITLE
+# -------------------------------
+st.set_page_config(page_title="📊 Learn Pandas from 0 to Hero", layout="wide")
+st.title("🐼 Learn Pandas from 0 to Hero")
+st.write("Welcome! This app will help you understand **Pandas** step by step using your own dataset.")
 
-# 📂 Step 1 — Upload or Use Example Dataset
-st.header("📂 Step 1: Load Dataset")
+# -------------------------------
+# STEP 1: UPLOAD DATASET
+# -------------------------------
+st.header("📂 Step 1: Upload Your Dataset")
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
-uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-if uploaded_file is not None:
+if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.success("✅ File uploaded successfully!")
-else:
-    st.info("No file uploaded — using example football dataset.")
-    data = {
-        'Player_Name': ['Messi', 'Mbappé', 'Salah', 'Ronaldo', 'De Bruyne', 'Haaland', 'Benzema', 'Neymar'],
-        'Club': ['PSG', 'PSG', 'Liverpool', 'Al Nassr', 'Man City', 'Man City', 'Real Madrid', 'Al Hilal'],
-        'Goals': [25, 28, 20, 30, 12, 27, 22, 18],
-        'Assists': [15, 12, 9, 8, 18, 6, 10, 11],
-        'Rating': [9.5, 9.3, 8.8, 9.0, 9.2, 9.1, 8.9, 9.0],
-        'Matches': [30, 32, 29, 31, 30, 28, 30, 27]
-    }
-    df = pd.DataFrame(data)
-
-# Display Data
-st.subheader("📊 Dataset Preview")
-st.dataframe(df.head())
-
-# 🔍 Step 2 — Explore the Dataset
-st.header("🔍 Step 2: Explore Basic Info")
-if st.checkbox("Show Data Info"):
-    buffer = []
-    df.info(buf=buffer)
-    info_str = "\n".join(buffer)
-    st.text(info_str)
-
-if st.checkbox("Show Summary Statistics"):
-    st.write(df.describe())
-
-if st.checkbox("Show Missing Values"):
-    st.write(df.isnull().sum())
-
-# 🧹 Step 3 — Clean the Data
-st.header("🧹 Step 3: Data Cleaning")
-if st.button("Clean Missing Data"):
-    df.fillna({
-        'Goals': df['Goals'].mean(),
-        'Assists': df['Assists'].mean(),
-        'Rating': df['Rating'].mean(),
-        'Matches': df['Matches'].median()
-    }, inplace=True)
-    st.success("✅ Missing data cleaned!")
-
-st.write("Cleaned Data:")
-st.dataframe(df.head())
-
-# ⚙️ Step 4 — Create New Columns
-st.header("⚙️ Step 4: Create New Columns")
-if st.button("Add Goal_Contribution & Efficiency"):
-    df['Goal_Contribution'] = df['Goals'] + df['Assists']
-    df['Goals_per_Match'] = (df['Goals'] / df['Matches']).round(2)
-    df['Efficiency'] = (df['Goals_per_Match'] * df['Rating']).round(2)
-    st.success("🆕 Columns added successfully!")
+    st.success("✅ File loaded successfully!")
+    
+    # Display basic info
+    st.subheader("👀 Preview of Your Data")
     st.dataframe(df.head())
 
-# 📈 Step 5 — Visualize
-st.header("📈 Step 5: Data Visualization")
+    # -------------------------------
+    # STEP 2: LEARN BASIC COMMANDS
+    # -------------------------------
+    st.header("📘 Step 2: Basic Pandas Commands")
 
-chart_type = st.selectbox("Choose a chart to visualize:", [
-    "Top Players by Goals",
-    "Top Players by Rating",
-    "Relationship: Goals vs Rating",
-    "Goals per Club"
-])
+    with st.expander("🔹 View the first few rows of the dataset"):
+        st.code("df.head()", language="python")
+        st.dataframe(df.head())
+        st.write("Shows the **first 5 rows** of your dataset. You can use `df.head(10)` to show 10 rows.")
 
-if chart_type == "Top Players by Goals":
-    top_goals = df.sort_values(by='Goals', ascending=False).head(10)
-    fig, ax = plt.subplots()
-    ax.bar(top_goals['Player_Name'], top_goals['Goals'], color='green')
-    ax.set_title("⚽ Top 10 Players by Goals")
-    ax.set_ylabel("Goals")
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    with st.expander("🔹 View the last few rows of the dataset"):
+        st.code("df.tail()", language="python")
+        st.dataframe(df.tail())
+        st.write("Shows the **last 5 rows** of your dataset.")
 
-elif chart_type == "Top Players by Rating":
-    top_ratings = df.sort_values(by='Rating', ascending=False).head(10)
-    fig, ax = plt.subplots()
-    ax.barh(top_ratings['Player_Name'], top_ratings['Rating'], color='orange')
-    ax.set_title("🌟 Top 10 Players by Rating")
-    st.pyplot(fig)
+    with st.expander("🔹 Get basic information about the dataset"):
+        st.code("df.info()", language="python")
+        buffer = []
+        df.info(buf=buffer)
+        s = "\n".join(buffer)
+        st.text(s)
+        st.write("Gives info about **columns, data types, and missing values**.")
 
-elif chart_type == "Relationship: Goals vs Rating":
-    fig, ax = plt.subplots()
-    ax.scatter(df['Goals'], df['Rating'], color='purple')
-    ax.set_title("⚽ Relationship: Goals vs Rating")
-    ax.set_xlabel("Goals")
-    ax.set_ylabel("Rating")
-    st.pyplot(fig)
+    with st.expander("🔹 Summary statistics"):
+        st.code("df.describe()", language="python")
+        st.dataframe(df.describe())
+        st.write("Provides **mean, min, max, and standard deviation** for numeric columns.")
 
-elif chart_type == "Goals per Club":
-    club_goals = df.groupby('Club')['Goals'].mean().sort_values(ascending=False)
-    fig, ax = plt.subplots()
-    ax.bar(club_goals.index, club_goals.values, color='skyblue')
-    ax.set_title("🏆 Average Goals per Club")
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    with st.expander("🔹 Check for missing values"):
+        st.code("df.isnull().sum()", language="python")
+        st.dataframe(df.isnull().sum())
+        st.write("Shows how many **missing values** are in each column.")
 
-# 🧩 Step 6 — Student Challenges
-st.header("🧩 Step 6: Try it Yourself!")
-st.markdown("""
-🎯 **Mini Exercises:**
-1️⃣ Show only players with more than 20 goals.  
-2️⃣ Show players with rating above 9.  
-3️⃣ Find average goals per club.  
-4️⃣ Create a new column: `Performance_Level` based on Rating  
-   - Rating ≥ 9 → Elite  
-   - Rating ≥ 8 → Excellent  
-   - Rating ≥ 7 → Good  
-   - Else → Average  
-""")
+    with st.expander("🔹 Get column names"):
+        st.code("df.columns", language="python")
+        st.write(df.columns.tolist())
+        st.write("Lists all column names in your dataset.")
 
-if st.button("Show Solutions 💡"):
-    df['Performance_Level'] = df['Rating'].apply(
-        lambda r: 'Elite' if r >= 9 else 'Excellent' if r >= 8 else 'Good'
-    )
-    st.dataframe(df[['Player_Name', 'Rating', 'Performance_Level']])
+    with st.expander("🔹 Select a single column"):
+        st.code("df['column_name']", language="python")
+        column = st.selectbox("Select a column to view:", df.columns)
+        st.dataframe(df[column])
+        st.write("Displays all values in the selected column.")
 
-# 💾 Step 7 — Save Results
-st.header("💾 Step 7: Save Your Work")
-if st.button("Download Clean Data"):
-    df.to_csv("clean_football_dataset.csv", index=False)
-    st.success("✅ File saved as 'clean_football_dataset.csv'")
+    with st.expander("🔹 Filter rows (example: players with goals > 10)"):
+        numeric_cols = df.select_dtypes(include='number').columns.tolist()
+        if numeric_cols:
+            selected_col = st.selectbox("Select a numeric column to filter:", numeric_cols)
+            threshold = st.slider("Choose a threshold:", float(df[selected_col].min()), float(df[selected_col].max()))
+            filtered = df[df[selected_col] > threshold]
+            st.dataframe(filtered)
+            st.write("Shows rows where the selected column value is greater than your threshold.")
 
-# 🏁 End Message
-st.success("🎉 Congratulations! You’ve learned Pandas basics interactively 🐼🔥")
+    # -------------------------------
+    # STEP 3: VISUALIZATION
+    # -------------------------------
+    st.header("📊 Step 3: Data Visualization with Pandas")
+
+    with st.expander("🔹 Plot a column (Histogram)"):
+        num_col = st.selectbox("Select a numeric column to plot:", numeric_cols, key="plot_col")
+        fig, ax = plt.subplots()
+        df[num_col].hist(ax=ax, bins=20)
+        st.pyplot(fig)
+        st.write("Visualizes the distribution of the selected column.")
+
+    with st.expander("🔹 Correlation Heatmap"):
+        fig, ax = plt.subplots(figsize=(6,4))
+        sns.heatmap(df.corr(), annot=True, cmap="coolwarm", ax=ax)
+        st.pyplot(fig)
+        st.write("Shows correlation between numeric columns — how they move together.")
+
+    # -------------------------------
+    # STEP 4: GROUPING & SORTING
+    # -------------------------------
+    st.header("📈 Step 4: Grouping and Sorting")
+
+    with st.expander("🔹 Sort values"):
+        col_sort = st.selectbox("Choose a column to sort by:", df.columns)
+        sorted_df = df.sort_values(by=col_sort, ascending=False)
+        st.dataframe(sorted_df.head())
+        st.write("Sorts the dataset by the selected column (descending order).")
+
+    with st.expander("🔹 Group by column"):
+        col_group = st.selectbox("Select a column to group by:", df.columns)
+        grouped = df.groupby(col_group).mean(numeric_only=True)
+        st.dataframe(grouped.head())
+        st.write("Groups the dataset by the selected column and calculates the mean for numeric values.")
+
+    # -------------------------------
+    # STEP 5: SAVE & DOWNLOAD
+    # -------------------------------
+    st.header("💾 Step 5: Save Your Work")
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button("⬇️ Download Cleaned Dataset", data=csv, file_name="cleaned_data.csv", mime="text/csv")
+else:
+    st.info("👆 Upload a CSV file to begin learning Pandas!")
