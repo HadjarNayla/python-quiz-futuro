@@ -11,43 +11,9 @@ st.set_page_config(page_title="🐼 Pandas from 0 to Hero | Futuro School", layo
 # 🎓 HEADER & BRANDING
 # ----------------------------
 st.title("🐼 Learn All Pandas Functions — From 0 to Hero")
+st.write("This app teaches **Pandas** step by step using your dataset. Upload a CSV file and explore every important function interactively!")
+st.write("هذا التطبيق يعلم **Pandas** خطوة بخطوة باستخدام بياناتك. قم بتحميل ملف CSV واستكشف كل وظيفة مهمة بشكل تفاعلي!")
 st.markdown("### 🎓 **Futuro School** | Created by Teacher **Hadjar Nayla**")
-st.markdown("---")
-
-# Description in English
-st.markdown("""
-**Welcome to the Interactive Pandas Learning Platform!**
-
-This comprehensive educational tool is designed to teach you **Python Pandas** library step by step, from beginner to advanced level. 
-Upload your own CSV dataset and explore every important Pandas function through hands-on, interactive examples. 
-Perfect for students, data analysts, and anyone looking to master data manipulation in Python!
-
-**What you'll learn:**
-- 📊 Basic data exploration and inspection
-- 🧹 Data cleaning and preprocessing techniques
-- 🔍 Filtering, selecting, and querying data
-- 📈 Sorting, grouping, and aggregating information
-- 🧮 Advanced data manipulation functions
-- 💾 Exporting and saving your results
-""")
-
-# Description in Arabic
-st.markdown("""
-**مرحباً بك في منصة تعلم Pandas التفاعلية!**
-
-هذه الأداة التعليمية الشاملة مصممة لتعليمك مكتبة **Pandas في بايثون** خطوة بخطوة، من المستوى المبتدئ إلى المتقدم.
-قم بتحميل ملف CSV الخاص بك واستكشف كل وظائف Pandas المهمة من خلال أمثلة تفاعلية عملية.
-مثالي للطلاب، محللي البيانات، وأي شخص يرغب في إتقان معالجة البيانات في بايثون!
-
-**ما ستتعلمه:**
-- 📊 استكشاف وفحص البيانات الأساسية
-- 🧹 تقنيات تنظيف ومعالجة البيانات
-- 🔍 تصفية واختيار واستعلام البيانات
-- 📈 ترتيب وتجميع وتلخيص المعلومات
-- 🧮 وظائف معالجة البيانات المتقدمة
-- 💾 تصدير وحفظ نتائجك
-""")
-
 st.markdown("---")
 
 # ----------------------------
