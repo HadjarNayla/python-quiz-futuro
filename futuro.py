@@ -168,10 +168,7 @@ if uploaded_file:
         st.code("pd.pivot_table(df, values='Goals', index='Club', aggfunc='mean')", language="python")
         st.write("Creates pivot tables for summarizing data easily.")
 
-    with st.expander("🔹 df.corr() — Find correlations"):
-        st.code("df.corr()", language="python")
-        st.dataframe(df.corr())
-        st.write("Shows how strongly numeric columns relate to each other (correlation matrix).")
+   
 
     # ----------------------------
     # 💾 STEP 7: SAVE RESULTS
@@ -189,4 +186,5 @@ if uploaded_file:
 
 else:
     st.info("👆 Please upload a CSV file to start learning Pandas!")
+
 
