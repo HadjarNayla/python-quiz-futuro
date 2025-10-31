@@ -1,4 +1,5 @@
-gspread
-oauth2client
-pandas
 streamlit
+pandas
+matplotlib
+seaborn
+numpy
