@@ -1,610 +1,1113 @@
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime
-import io
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, PageBreak, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-from reportlab.lib import colors
-import sys
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from io import StringIO
-import traceback
-import base64
 
-# Page configuration
+# Page Configuration
 st.set_page_config(
-    page_title="AI Robot Homework Helper",
-    page_icon="🤖",
-    layout="wide"
+    page_title="⚽ Football Analytics - Pandas Tutorial",
+    page_icon="⚽",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # Custom CSS
 st.markdown("""
 <style>
-    .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .stButton>button {
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        font-size: 18px;
+    .main-header {
+        font-size: 3rem;
         font-weight: bold;
-        padding: 15px 30px;
-        border-radius: 10px;
-        border: none;
-        width: 100%;
+        color: #1e3a8a;
+        text-align: center;
+        padding: 1rem;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #764ba2, #667eea);
-        transform: scale(1.05);
+    .metric-card {
+        background-color: #f0f9ff;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #3b82f6;
     }
-    h1, h2, h3 {
-        color: white;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    .success-box {
+        padding: 1rem;
+        background-color: #d1fae5;
+        border-radius: 0.5rem;
+        border-left: 4px solid #10b981;
     }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stNumberInput>div>div>input {
-        border-radius: 10px;
-        border: 2px solid #667eea;
-    }
-    .code-output {
-        background-color: #1e1e1e;
-        color: #d4d4d4;
-        padding: 15px;
-        border-radius: 10px;
-        font-family: 'Courier New', monospace;
-        margin: 10px 0;
-    }
-    .success-output {
-        background-color: #1a472a;
-        color: #7ee081;
-    }
-    .error-output {
-        background-color: #5a1a1a;
-        color: #ff6b6b;
+    .code-box {
+        background-color: #1e293b;
+        color: #10b981;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        font-family: monospace;
     }
 </style>
 """, unsafe_allow_html=True)
 
+# Title
+st.markdown('<p class="main-header">⚽ Football Players Analytics Tutorial</p>', unsafe_allow_html=True)
+st.markdown("### 🐼 Interactive Pandas Learning with Your Dataset (2015-2024)")
+
 # Initialize session state
-if 'code_output' not in st.session_state:
-    st.session_state.code_output = ""
-if 'code_error' not in st.session_state:
-    st.session_state.code_error = ""
-if 'user_code' not in st.session_state:
-    st.session_state.user_code = '''# My First AI Robot!
-print("🤖 ROBOT: Hello! I am a simple AI robot.")
-print("🤖 ROBOT: Ask me something or say hi!")
+if 'df' not in st.session_state:
+    st.session_state.df = None
 
-while True:
-    user_input = input("\\n👤 YOU: ").lower()
+# Sidebar
+with st.sidebar:
+    st.header("📚 Tutorial Navigation")
     
-    if "hello" in user_input or "hi" in user_input:
-        print("🤖 ROBOT: Hi there! Nice to meet you!")
-    
-    elif "how are you" in user_input:
-        print("🤖 ROBOT: I'm great! Always charged up! ⚡")
-    
-    elif "name" in user_input:
-        print("🤖 ROBOT: My name is RoboBot 3000!")
-    
-    elif "bye" in user_input:
-        print("🤖 ROBOT: Goodbye! 👋")
-        break
-    
-    elif "joke" in user_input:
-        print("🤖 ROBOT: Why did the robot go on a diet?")
-        print("         Because it had too many bytes! 😄")
-    
-    else:
-        print("🤖 ROBOT: I don't understand that yet!")
-
-print("\\n🤖 ROBOT: [Powering down...] zzz...")
-'''
-
-if 'uploaded_drawing' not in st.session_state:
-    st.session_state.uploaded_drawing = None
-
-# Header
-st.title("🤖 AI Robot Homework Helper")
-st.subheader("✨ Lesson 1: What is AI? - Interactive Coding & Drawing")
-
-# Student Information
-st.markdown("---")
-st.header("📝 Student Information")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    student_name = st.text_input("👤 Your Name:", placeholder="Enter your name...")
-with col2:
-    student_age = st.number_input("🎂 Your Age:", min_value=10, max_value=16, value=12)
-with col3:
-    homework_date = st.date_input("📅 Date:", datetime.now())
-
-# Option Selection
-st.markdown("---")
-st.header("🎯 Choose Your Homework Option")
-option = st.radio(
-    "Select ONE option (or do both for extra credit! 🌟)",
-    ["💻 Option 1: Improve Your Robot (Coding)", "🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"],
-    horizontal=False
-)
-
-# Store data for PDF
-coding_responses = {}
-creative_responses = {}
-canvas_image = None
-
-# Option 1: Coding with Live Execution
-if option in ["💻 Option 1: Improve Your Robot (Coding)", "🚀 Both Options!"]:
-    st.markdown("---")
-    st.header("💻 Option 1: Improve Your Robot - Live Coding Environment")
-    
-    st.write("**✏️ Write your robot code below and test it live!**")
-    
-    # Code editor
-    user_code = st.text_area(
-        "Python Code Editor:",
-        value=st.session_state.user_code,
-        height=400,
-        help="Write your Python code here. Add new elif statements for new responses!"
+    tutorial_section = st.radio(
+        "Choose Section:",
+        [
+            "🏠 Home",
+            "📤 Upload Data",
+            "🔍 Explore Data",
+            "📊 Statistical Analysis",
+            "🎯 Filter & Sort",
+            "📈 Grouping & Aggregation",
+            "🆕 Create New Columns",
+            "🧹 Data Cleaning",
+            "📉 Visualizations",
+            "💾 Export Results",
+            "🎓 Complete Example"
+        ]
     )
-    st.session_state.user_code = user_code
     
-    col1, col2, col3 = st.columns(3)
+    st.markdown("---")
+    st.markdown("### 💡 Quick Tips")
+    st.info("Upload your CSV file to start analyzing!")
+    
+    # Sample Data Generator
+    if st.button("🎲 Generate Sample Data"):
+        sample_data = {
+            'Player_Name': ['Lionel Messi', 'Cristiano Ronaldo', 'Neymar Jr', 
+                           'Kylian Mbappé', 'Mohamed Salah', 'Kevin De Bruyne',
+                           'Robert Lewandowski', 'Erling Haaland', 'Harry Kane',
+                           'Luka Modrić', 'Vinicius Jr', 'Jude Bellingham'],
+            'Club': ['Inter Miami', 'Al Nassr', 'Al Hilal', 'Real Madrid', 
+                    'Liverpool', 'Manchester City', 'Barcelona', 'Manchester City',
+                    'Bayern Munich', 'Real Madrid', 'Real Madrid', 'Real Madrid'],
+            'Goals': [32, 44, 23, 52, 30, 10, 42, 56, 44, 5, 28, 23],
+            'Assists': [35, 12, 28, 16, 16, 25, 15, 11, 12, 15, 21, 13],
+            'Rating': [8.9, 8.5, 8.3, 9.2, 8.7, 8.8, 8.6, 9.0, 8.5, 8.4, 8.7, 8.9],
+            'Tenure_Years': [1, 2, 1, 5, 7, 9, 3, 3, 4, 12, 6, 1],
+            'Matches_Played': [38, 42, 35, 45, 41, 38, 40, 43, 42, 40, 44, 42]
+        }
+        st.session_state.df = pd.DataFrame(sample_data)
+        st.success("✅ Sample data generated!")
+        st.rerun()
+
+# Main Content
+if tutorial_section == "🏠 Home":
+    st.header("Welcome to Interactive Pandas Tutorial! 🎉")
+    
+    col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("▶️ Run Code", type="primary"):
-            st.session_state.code_output = ""
-            st.session_state.code_error = ""
+        st.markdown("""
+        ### 📖 What You'll Learn:
+        - 📤 Loading and exploring datasets
+        - 🔍 Data selection and filtering
+        - 📊 Statistical analysis techniques
+        - 📈 Grouping and aggregation
+        - 🆕 Creating calculated columns
+        - 🧹 Data cleaning methods
+        - 📉 Data visualization
+        - 💾 Exporting results
+        
+        ### 🎯 Dataset Features:
+        - ⚽ Player Name
+        - 🏢 Club
+        - 🎯 Goals & Assists
+        - 🌟 Rating
+        - ⏳ Tenure in Club
+        - 🏆 Matches Played
+        """)
+    
+    with col2:
+        st.markdown("""
+        ### 🚀 Getting Started:
+        
+        **Step 1:** Upload your CSV file or generate sample data
+        
+        **Step 2:** Navigate through sections using the sidebar
+        
+        **Step 3:** Interact with filters and options
+        
+        **Step 4:** See live results and code examples
+        
+        **Step 5:** Download your analysis results
+        
+        ### 📚 Prerequisites:
+        ```python
+        pip install streamlit pandas numpy matplotlib seaborn
+        ```
+        
+        ### ▶️ Run this app:
+        ```bash
+        streamlit run app.py
+        ```
+        """)
+    
+    st.info("👈 Start by uploading your dataset in the sidebar or generate sample data!")
+
+elif tutorial_section == "📤 Upload Data":
+    st.header("📤 Upload Your Dataset")
+    
+    st.markdown("""
+    ### Upload your Football Players CSV file
+    Your CSV should contain columns like: Player_Name, Club, Goals, Assists, Rating, Tenure_Years, Matches_Played
+    """)
+    
+    uploaded_file = st.file_uploader("Choose a CSV file", type=['csv'])
+    
+    if uploaded_file is not None:
+        try:
+            st.session_state.df = pd.read_csv(uploaded_file)
+            st.success("✅ File uploaded successfully!")
             
-            st.info("📝 Analyzing your code structure...")
+            st.markdown("### Preview of uploaded data:")
+            st.dataframe(st.session_state.df.head(10), use_container_width=True)
             
-            try:
-                # Check for syntax errors
-                compile(user_code, '<string>', 'exec')
-                st.session_state.code_output = "✅ Code syntax is correct!\n\n"
+            st.markdown("### Dataset Info:")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Rows", len(st.session_state.df))
+            with col2:
+                st.metric("Total Columns", len(st.session_state.df.columns))
+            with col3:
+                st.metric("Memory Usage", f"{st.session_state.df.memory_usage(deep=True).sum() / 1024:.2f} KB")
+            
+            # Show code
+            with st.expander("📝 Show Python Code"):
+                st.code("""
+import pandas as pd
+
+# Load data from CSV
+df = pd.read_csv('football_players_2015_2024.csv')
+
+# Preview data
+print(df.head())
+
+# Dataset shape
+print(f"Shape: {df.shape}")
+                """, language="python")
                 
-                # Count the number of elif statements
-                elif_count = user_code.count("elif")
-                if_count = user_code.count("if ")
-                print_count = user_code.count("print(")
+        except Exception as e:
+            st.error(f"❌ Error loading file: {e}")
+    else:
+        st.info("Please upload a CSV file to continue")
+
+elif tutorial_section == "🔍 Explore Data":
+    st.header("🔍 Explore Your Dataset")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Preview", "ℹ️ Info", "📈 Statistics", "🔎 Details"])
+        
+        with tab1:
+            st.subheader("Dataset Preview")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                n_rows = st.slider("Number of rows to display", 5, 50, 10)
+            with col2:
+                view_type = st.radio("View", ["Head", "Tail", "Sample"], horizontal=True)
+            
+            if view_type == "Head":
+                st.dataframe(df.head(n_rows), use_container_width=True)
+            elif view_type == "Tail":
+                st.dataframe(df.tail(n_rows), use_container_width=True)
+            else:
+                st.dataframe(df.sample(min(n_rows, len(df))), use_container_width=True)
+            
+            with st.expander("📝 Show Code"):
+                st.code(f"""
+# View first {n_rows} rows
+df.head({n_rows})
+
+# View last {n_rows} rows
+df.tail({n_rows})
+
+# Random sample
+df.sample({n_rows})
+                """, language="python")
+        
+        with tab2:
+            st.subheader("Dataset Information")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Rows", len(df))
+            with col2:
+                st.metric("Columns", len(df.columns))
+            with col3:
+                st.metric("Duplicates", df.duplicated().sum())
+            with col4:
+                st.metric("Missing Values", df.isnull().sum().sum())
+            
+            st.markdown("### Column Information:")
+            col_info = pd.DataFrame({
+                'Column': df.columns,
+                'Type': df.dtypes.values,
+                'Non-Null Count': df.count().values,
+                'Null Count': df.isnull().sum().values
+            })
+            st.dataframe(col_info, use_container_width=True)
+            
+            with st.expander("📝 Show Code"):
+                st.code("""
+# Dataset info
+df.info()
+
+# Check missing values
+df.isnull().sum()
+
+# Check duplicates
+df.duplicated().sum()
+                """, language="python")
+        
+        with tab3:
+            st.subheader("Statistical Summary")
+            
+            # Select numeric columns
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            
+            if numeric_cols:
+                st.dataframe(df[numeric_cols].describe(), use_container_width=True)
                 
-                st.session_state.code_output += f"📊 Code Analysis:\n"
-                st.session_state.code_output += f"  • Found {if_count} 'if' statement(s)\n"
-                st.session_state.code_output += f"  • Found {elif_count} 'elif' statement(s)\n"
-                st.session_state.code_output += f"  • Print statements: {print_count}\n\n"
+                st.markdown("### Correlation Matrix")
+                if len(numeric_cols) > 1:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    sns.heatmap(df[numeric_cols].corr(), annot=True, cmap='coolwarm', center=0, ax=ax)
+                    st.pyplot(fig)
                 
-                if elif_count >= 5:
-                    st.session_state.code_output += "🌟 Great job! You've added new responses!\n"
-                elif elif_count >= 3:
-                    st.session_state.code_output += "👍 Good start! Try adding 1-2 more responses!\n"
+                with st.expander("📝 Show Code"):
+                    st.code("""
+# Statistical summary
+df.describe()
+
+# Correlation matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+correlation = df[numeric_columns].corr()
+sns.heatmap(correlation, annot=True, cmap='coolwarm')
+plt.show()
+                    """, language="python")
+            else:
+                st.warning("No numeric columns found in dataset")
+        
+        with tab4:
+            st.subheader("Detailed Column Analysis")
+            
+            selected_col = st.selectbox("Select Column to Analyze", df.columns)
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"### {selected_col} - Statistics")
+                if df[selected_col].dtype in ['int64', 'float64']:
+                    st.write(f"**Mean:** {df[selected_col].mean():.2f}")
+                    st.write(f"**Median:** {df[selected_col].median():.2f}")
+                    st.write(f"**Std Dev:** {df[selected_col].std():.2f}")
+                    st.write(f"**Min:** {df[selected_col].min()}")
+                    st.write(f"**Max:** {df[selected_col].max()}")
                 else:
-                    st.session_state.code_output += "💡 Try adding at least 2 more 'elif' statements for new responses!\n"
-                
-                # Check for specific keywords
-                keywords = ["food", "fact", "subject", "joke", "color", "hobby", "age", "sport"]
-                found_keywords = [kw for kw in keywords if kw in user_code.lower()]
-                
-                if found_keywords:
-                    st.session_state.code_output += f"\n✨ Detected new topics: {', '.join(found_keywords)}\n"
-                
-                # Check for bonus features
-                if "import random" in user_code or "random." in user_code:
-                    st.session_state.code_output += "\n🎲 BONUS: Random responses detected!\n"
-                
-                if "user_name" in user_code or "name =" in user_code:
-                    st.session_state.code_output += "🎯 BONUS: Name remembering detected!\n"
-                
-                st.session_state.code_output += "\n✅ Your code is ready to use!"
-                
-            except SyntaxError as e:
-                st.session_state.code_error = f"❌ Syntax Error at line {e.lineno}:\n{str(e)}\n\n"
-                st.session_state.code_error += "💡 Check for missing colons (:), parentheses (), or quotes."
-            except Exception as e:
-                st.session_state.code_error = f"❌ Error: {str(e)}"
-    
-    with col2:
-        if st.button("🔄 Reset Code"):
-            st.session_state.user_code = '''# My First AI Robot!
-print("🤖 ROBOT: Hello! I am a simple AI robot.")
-print("🤖 ROBOT: Ask me something or say hi!")
-
-while True:
-    user_input = input("\\n👤 YOU: ").lower()
-    
-    if "hello" in user_input or "hi" in user_input:
-        print("🤖 ROBOT: Hi there! Nice to meet you!")
-    
-    elif "bye" in user_input:
-        print("🤖 ROBOT: Goodbye! 👋")
-        break
-    
+                    st.write(f"**Unique Values:** {df[selected_col].nunique()}")
+                    st.write(f"**Most Common:** {df[selected_col].mode()[0]}")
+            
+            with col2:
+                st.markdown(f"### {selected_col} - Distribution")
+                if df[selected_col].dtype in ['int64', 'float64']:
+                    fig, ax = plt.subplots()
+                    df[selected_col].hist(bins=20, ax=ax, edgecolor='black')
+                    ax.set_xlabel(selected_col)
+                    ax.set_ylabel('Frequency')
+                    st.pyplot(fig)
+                else:
+                    st.write(df[selected_col].value_counts())
     else:
-        print("🤖 ROBOT: I don't understand that yet!")
-'''
-            st.rerun()
-    
-    with col3:
-        if st.button("💡 Show Example"):
-            st.session_state.user_code = '''# My Improved AI Robot!
-print("🤖 ROBOT: Hello! I am RoboBot 3000!")
-print("🤖 ROBOT: Ask me anything!")
+        st.warning("⚠️ Please upload a dataset first!")
 
-while True:
-    user_input = input("\\n👤 YOU: ").lower()
+elif tutorial_section == "📊 Statistical Analysis":
+    st.header("📊 Statistical Analysis")
     
-    if "hello" in user_input or "hi" in user_input:
-        print("🤖 ROBOT: Hi there! Nice to meet you!")
-    
-    elif "how are you" in user_input:
-        print("🤖 ROBOT: I'm great! Always charged up! ⚡")
-    
-    elif "name" in user_input:
-        print("🤖 ROBOT: My name is RoboBot 3000!")
-    
-    elif "food" in user_input or "eat" in user_input:
-        print("🤖 ROBOT: I love electricity! It's shocking how good it tastes! ⚡🔌")
-    
-    elif "fact" in user_input:
-        print("🤖 ROBOT: Did you know? The first robot was built in 1954!")
-    
-    elif "subject" in user_input or "favorite subject" in user_input:
-        print("🤖 ROBOT: I love Computer Science! Binary is my first language! 01010")
-    
-    elif "joke" in user_input:
-        print("🤖 ROBOT: Why did the robot go on a diet?")
-        print("         Because it had too many bytes! 😄")
-    
-    elif "bye" in user_input or "goodbye" in user_input:
-        print("🤖 ROBOT: Goodbye! 👋")
-        break
-    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        if numeric_cols:
+            st.subheader("Basic Statistics")
+            
+            selected_columns = st.multiselect(
+                "Select columns to analyze",
+                numeric_cols,
+                default=numeric_cols[:3] if len(numeric_cols) >= 3 else numeric_cols
+            )
+            
+            if selected_columns:
+                col1, col2, col3 = st.columns(3)
+                
+                for idx, col in enumerate(selected_columns):
+                    with [col1, col2, col3][idx % 3]:
+                        st.markdown(f"### {col}")
+                        st.metric("Mean", f"{df[col].mean():.2f}")
+                        st.metric("Median", f"{df[col].median():.2f}")
+                        st.metric("Std Dev", f"{df[col].std():.2f}")
+                        st.metric("Max", f"{df[col].max():.2f}")
+                        st.metric("Min", f"{df[col].min():.2f}")
+                
+                st.markdown("---")
+                st.subheader("Value Counts for Categorical Columns")
+                
+                cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+                if cat_cols:
+                    selected_cat = st.selectbox("Select categorical column", cat_cols)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.dataframe(df[selected_cat].value_counts(), use_container_width=True)
+                    with col2:
+                        fig, ax = plt.subplots()
+                        df[selected_cat].value_counts().plot(kind='bar', ax=ax)
+                        plt.xticks(rotation=45)
+                        st.pyplot(fig)
+                
+                with st.expander("📝 Show Code"):
+                    st.code("""
+# Basic statistics
+print(f"Mean: {df['Goals'].mean():.2f}")
+print(f"Median: {df['Goals'].median():.2f}")
+print(f"Std: {df['Goals'].std():.2f}")
+print(f"Max: {df['Goals'].max()}")
+print(f"Min: {df['Goals'].min()}")
+
+# Value counts
+df['Club'].value_counts()
+
+# Correlation
+df[['Goals', 'Assists', 'Rating']].corr()
+                    """, language="python")
+        else:
+            st.warning("No numeric columns found!")
     else:
-        print("🤖 ROBOT: Hmm, I don't understand that yet. Try asking something else!")
+        st.warning("⚠️ Please upload a dataset first!")
 
-print("\\n🤖 ROBOT: [Powering down...] zzz...")
-'''
-            st.rerun()
+elif tutorial_section == "🎯 Filter & Sort":
+    st.header("🎯 Filter and Sort Data")
     
-    # Display output
-    if st.session_state.code_output:
-        st.markdown("### 📤 Output:")
-        st.markdown(f'<div class="code-output success-output">{st.session_state.code_output}</div>', unsafe_allow_html=True)
-    
-    if st.session_state.code_error:
-        st.markdown("### ❌ Error:")
-        st.markdown(f'<div class="code-output error-output">{st.session_state.code_error}</div>', unsafe_allow_html=True)
-    
-    # Checklist
-    st.markdown("---")
-    st.subheader("✅ Checklist - What did you add?")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        coding_responses['food'] = st.checkbox("🍕 Favorite food response")
-        coding_responses['fact'] = st.checkbox("🧠 Fun fact response")
-    
-    with col2:
-        coding_responses['subject'] = st.checkbox("📚 Favorite subject response")
-        coding_responses['joke'] = st.checkbox("😄 Another joke response")
-    
-    st.markdown("---")
-    st.markdown("**📝 Additional Notes:**")
-    coding_responses['notes'] = st.text_area(
-        "What else did you add to your robot?",
-        placeholder="Describe any other features you added...",
-        height=100
-    )
-
-# Option 2: Creative Design with Drawing Upload
-if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"]:
-    st.markdown("---")
-    st.header("🎨 Option 2: Design Your Dream Robot")
-    
-    st.subheader("🖌️ Draw Your Robot!")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.write("**Option A: Upload a drawing** (draw on paper and take a photo)")
-        uploaded_file = st.file_uploader(
-            "Upload your robot drawing (PNG, JPG, JPEG)",
-            type=['png', 'jpg', 'jpeg'],
-            help="Draw your robot on paper, take a photo, and upload it here!"
-        )
+    if st.session_state.df is not None:
+        df = st.session_state.df
         
-        if uploaded_file is not None:
-            canvas_image = Image.open(uploaded_file)
-            st.session_state.uploaded_drawing = canvas_image
-            st.image(canvas_image, caption="Your Robot Drawing", use_column_width=True)
-    
-    with col2:
-        st.write("**Option B: Describe your robot**")
-        robot_description = st.text_area(
-            "Describe what your robot looks like:",
-            placeholder="My robot is blue with red eyes, has wheels for legs, mechanical arms with 3 fingers...",
-            height=200,
-            help="If you can't upload a drawing, describe it in detail!"
-        )
+        tab1, tab2 = st.tabs(["🔍 Filtering", "📊 Sorting"])
         
-        if robot_description:
-            st.info(f"📝 Your description will be included in the PDF!")
-    
-    st.markdown("---")
-    st.subheader("❓ Answer These Questions About Your Robot:")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        creative_responses['name'] = st.text_input(
-            "🤖 What is your robot's name?",
-            placeholder="Example: RoboHelper 3000"
-        )
+        with tab1:
+            st.subheader("Filter Your Data")
+            
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            
+            if numeric_cols:
+                filter_col = st.selectbox("Select column to filter", numeric_cols)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    filter_op = st.selectbox("Operation", [">", "<", ">=", "<=", "=="])
+                with col2:
+                    filter_value = st.number_input("Value", value=float(df[filter_col].mean()))
+                
+                # Apply filter
+                if filter_op == ">":
+                    filtered_df = df[df[filter_col] > filter_value]
+                elif filter_op == "<":
+                    filtered_df = df[df[filter_col] < filter_value]
+                elif filter_op == ">=":
+                    filtered_df = df[df[filter_col] >= filter_value]
+                elif filter_op == "<=":
+                    filtered_df = df[df[filter_col] <= filter_value]
+                else:
+                    filtered_df = df[df[filter_col] == filter_value]
+                
+                st.success(f"✅ Found {len(filtered_df)} rows matching criteria")
+                st.dataframe(filtered_df, use_container_width=True)
+                
+                with st.expander("📝 Show Code"):
+                    st.code(f"""
+# Filter data
+filtered_df = df[df['{filter_col}'] {filter_op} {filter_value}]
+print(f"Found {{len(filtered_df)}} rows")
+print(filtered_df)
+                    """, language="python")
         
-        creative_responses['function'] = st.text_area(
-            "⚙️ What does it do?",
-            placeholder="Example: My robot helps students with homework by...",
-            height=120
-        )
-    
-    with col2:
-        creative_responses['help'] = st.text_area(
-            "💝 How does it help people?",
-            placeholder="Example: It helps people by...",
-            height=120
-        )
-        
-        creative_responses['special'] = st.text_area(
-            "✨ What makes it special?",
-            placeholder="Example: It can understand emotions and...",
-            height=120
-        )
-    
-    creative_responses['description'] = robot_description
+        with tab2:
+            st.subheader("Sort Your Data")
+            
+            sort_col = st.selectbox("Select column to sort by", df.columns)
+            sort_order = st.radio("Sort order", ["Ascending", "Descending"], horizontal=True)
+            
+            sorted_df = df.sort_values(sort_col, ascending=(sort_order == "Ascending"))
+            
+            st.dataframe(sorted_df, use_container_width=True)
+            
+            with st.expander("📝 Show Code"):
+                st.code(f"""
+# Sort data
+sorted_df = df.sort_values('{sort_col}', ascending={sort_order == "Ascending"})
+print(sorted_df)
 
-# Bonus Challenge
-st.markdown("---")
-st.header("🌟 Bonus Challenge (Optional)")
-col1, col2 = st.columns(2)
-
-with col1:
-    bonus1 = st.checkbox("🎯 I made the robot remember the user's name")
-    bonus1_code = ""
-    if bonus1:
-        bonus1_code = st.text_area(
-            "Show your code for remembering names:",
-            placeholder="Example: user_name = input('What is your name?')\nprint(f'Hi {user_name}!')",
-            height=100,
-            key="bonus1"
-        )
-
-with col2:
-    bonus2 = st.checkbox("🎲 I added random responses")
-    bonus2_code = ""
-    if bonus2:
-        bonus2_code = st.text_area(
-            "Show your code for random responses:",
-            placeholder="Example: import random\nresponses = ['Hi!', 'Hello!', 'Hey!']\nprint(random.choice(responses))",
-            height=100,
-            key="bonus2"
-        )
-
-# Generate PDF Button
-st.markdown("---")
-st.header("📥 Generate Your Homework PDF")
-
-if st.button("📄 Create My Homework PDF!", type="primary"):
-    if not student_name:
-        st.error("⚠️ Please enter your name first!")
+# Sort by multiple columns
+df.sort_values(['Rating', 'Goals'], ascending=[False, False])
+                """, language="python")
     else:
-        with st.spinner("🎨 Creating your beautiful PDF homework sheet..."):
-            try:
-                # Create PDF
-                buffer = io.BytesIO()
-                doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
-                story = []
-                styles = getSampleStyleSheet()
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "📈 Grouping & Aggregation":
+    st.header("📈 Grouping and Aggregation")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        
+        cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        if cat_cols and numeric_cols:
+            st.subheader("Group By Analysis")
+            
+            group_col = st.selectbox("Group by column", cat_cols)
+            agg_cols = st.multiselect("Columns to aggregate", numeric_cols, default=numeric_cols[:2])
+            agg_func = st.selectbox("Aggregation function", ["mean", "sum", "count", "min", "max", "median"])
+            
+            if agg_cols:
+                grouped = df.groupby(group_col)[agg_cols].agg(agg_func).round(2)
                 
-                # Custom styles
-                title_style = ParagraphStyle(
-                    'CustomTitle',
-                    parent=styles['Heading1'],
-                    fontSize=24,
-                    textColor=colors.HexColor('#667eea'),
-                    spaceAfter=20,
-                    alignment=TA_CENTER,
-                    fontName='Helvetica-Bold'
+                st.dataframe(grouped, use_container_width=True)
+                
+                # Visualization
+                st.subheader("Visualization")
+                chart_col = st.selectbox("Select column to visualize", agg_cols)
+                
+                fig, ax = plt.subplots(figsize=(10, 6))
+                grouped[chart_col].plot(kind='bar', ax=ax)
+                plt.xlabel(group_col)
+                plt.ylabel(f"{agg_func.title()} of {chart_col}")
+                plt.title(f"{agg_func.title()} {chart_col} by {group_col}")
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                st.pyplot(fig)
+                
+                with st.expander("📝 Show Code"):
+                    st.code(f"""
+# Group by and aggregate
+grouped = df.groupby('{group_col}')[{agg_cols}].{agg_func}()
+print(grouped)
+
+# Multiple aggregations
+df.groupby('{group_col}').agg({{
+    '{agg_cols[0]}': ['sum', 'mean', 'max'],
+    '{agg_cols[1] if len(agg_cols) > 1 else agg_cols[0]}': ['mean', 'count']
+}})
+                    """, language="python")
+        else:
+            st.warning("Need both categorical and numeric columns for grouping!")
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "🆕 Create New Columns":
+    st.header("🆕 Create New Calculated Columns")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df.copy()
+        
+        st.subheader("Add Custom Columns")
+        
+        col_name = st.text_input("New column name", "Goal_Contribution")
+        
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        
+        if len(numeric_cols) >= 2:
+            col1, col2 = st.columns(2)
+            with col1:
+                first_col = st.selectbox("First column", numeric_cols, index=0)
+            with col2:
+                operation = st.selectbox("Operation", ["+", "-", "*", "/"])
+            
+            second_col = st.selectbox("Second column", numeric_cols, index=1 if len(numeric_cols) > 1 else 0)
+            
+            if st.button("Create Column"):
+                if operation == "+":
+                    df[col_name] = df[first_col] + df[second_col]
+                elif operation == "-":
+                    df[col_name] = df[first_col] - df[second_col]
+                elif operation == "*":
+                    df[col_name] = df[first_col] * df[second_col]
+                else:
+                    df[col_name] = df[first_col] / df[second_col]
+                
+                st.session_state.df = df
+                st.success(f"✅ Created column: {col_name}")
+                st.dataframe(df[[first_col, second_col, col_name]].head(10), use_container_width=True)
+                
+                with st.expander("📝 Show Code"):
+                    st.code(f"""
+# Create new column
+df['{col_name}'] = df['{first_col}'] {operation} df['{second_col}']
+
+# Example: Goals per match
+df['Goals_Per_Match'] = df['Goals'] / df['Matches_Played']
+
+# Example: Total contribution
+df['Goal_Contribution'] = df['Goals'] + df['Assists']
+                    """, language="python")
+        
+        st.markdown("---")
+        st.subheader("Common Calculations")
+        
+        if st.button("🎯 Calculate Goals per Match"):
+            if 'Goals' in df.columns and 'Matches_Played' in df.columns:
+                df['Goals_Per_Match'] = (df['Goals'] / df['Matches_Played']).round(2)
+                st.session_state.df = df
+                st.success("✅ Added Goals_Per_Match column!")
+                st.dataframe(df[['Player_Name', 'Goals', 'Matches_Played', 'Goals_Per_Match']].head(), use_container_width=True)
+        
+        if st.button("🤝 Calculate Goal Contribution"):
+            if 'Goals' in df.columns and 'Assists' in df.columns:
+                df['Goal_Contribution'] = df['Goals'] + df['Assists']
+                st.session_state.df = df
+                st.success("✅ Added Goal_Contribution column!")
+                st.dataframe(df[['Player_Name', 'Goals', 'Assists', 'Goal_Contribution']].head(), use_container_width=True)
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "🧹 Data Cleaning":
+    st.header("🧹 Data Cleaning")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df.copy()
+        
+        tab1, tab2, tab3 = st.tabs(["🔍 Check Issues", "🗑️ Remove Duplicates", "❓ Handle Missing"])
+        
+        with tab1:
+            st.subheader("Data Quality Check")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Rows", len(df))
+                st.metric("Duplicates", df.duplicated().sum())
+            with col2:
+                st.metric("Missing Values", df.isnull().sum().sum())
+                st.metric("Complete Rows", len(df.dropna()))
+            with col3:
+                st.metric("Columns", len(df.columns))
+                st.metric("Memory (KB)", f"{df.memory_usage(deep=True).sum() / 1024:.2f}")
+            
+            st.markdown("### Missing Values by Column")
+            missing_df = pd.DataFrame({
+                'Column': df.columns,
+                'Missing': df.isnull().sum().values,
+                'Percentage': (df.isnull().sum().values / len(df) * 100).round(2)
+            })
+            st.dataframe(missing_df, use_container_width=True)
+        
+        with tab2:
+            st.subheader("Remove Duplicate Rows")
+            
+            dup_count = df.duplicated().sum()
+            st.info(f"Found {dup_count} duplicate rows")
+            
+            if dup_count > 0:
+                st.dataframe(df[df.duplicated(keep=False)], use_container_width=True)
+                
+                if st.button("🗑️ Remove Duplicates"):
+                    df = df.drop_duplicates()
+                    st.session_state.df = df
+                    st.success(f"✅ Removed {dup_count} duplicates!")
+                    st.rerun()
+            else:
+                st.success("✅ No duplicates found!")
+            
+            with st.expander("📝 Show Code"):
+                st.code("""
+# Check for duplicates
+print(f"Duplicates: {df.duplicated().sum()}")
+
+# Remove duplicates
+df_clean = df.drop_duplicates()
+
+# Reset index
+df_clean = df_clean.reset_index(drop=True)
+                """, language="python")
+        
+        with tab3:
+            st.subheader("Handle Missing Values")
+            
+            missing_cols = df.columns[df.isnull().any()].tolist()
+            
+            if missing_cols:
+                selected_col = st.selectbox("Select column with missing values", missing_cols)
+                
+                method = st.radio(
+                    "Handling method",
+                    ["Fill with Mean", "Fill with Median", "Fill with Mode", "Fill with Custom Value", "Drop Rows"]
                 )
                 
-                heading_style = ParagraphStyle(
-                    'CustomHeading',
-                    parent=styles['Heading2'],
-                    fontSize=16,
-                    textColor=colors.HexColor('#764ba2'),
-                    spaceAfter=12,
-                    spaceBefore=12,
-                    fontName='Helvetica-Bold'
-                )
+                if method == "Fill with Custom Value":
+                    custom_value = st.text_input("Custom value", "0")
                 
-                normal_style = ParagraphStyle(
-                    'CustomNormal',
-                    parent=styles['Normal'],
-                    fontSize=10,
-                    spaceAfter=8
-                )
+                if st.button("Apply"):
+                    if method == "Fill with Mean":
+                        df[selected_col].fillna(df[selected_col].mean(), inplace=True)
+                    elif method == "Fill with Median":
+                        df[selected_col].fillna(df[selected_col].median(), inplace=True)
+                    elif method == "Fill with Mode":
+                        df[selected_col].fillna(df[selected_col].mode()[0], inplace=True)
+                    elif method == "Fill with Custom Value":
+                        df[selected_col].fillna(custom_value, inplace=True)
+                    else:
+                        df = df.dropna(subset=[selected_col])
+                    
+                    st.session_state.df = df
+                    st.success("✅ Missing values handled!")
+                    st.rerun()
+            else:
+                st.success("✅ No missing values found!")
+            
+            with st.expander("📝 Show Code"):
+                st.code("""
+# Fill with mean
+df['Goals'].fillna(df['Goals'].mean(), inplace=True)
+
+# Fill with median
+df['Rating'].fillna(df['Rating'].median(), inplace=True)
+
+# Drop rows with missing values
+df_clean = df.dropna()
+
+# Drop specific columns with missing values
+df_clean = df.dropna(subset=['Goals', 'Assists'])
+                """, language="python")
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "📉 Visualizations":
+    st.header("📉 Data Visualizations")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        
+        viz_type = st.selectbox(
+            "Select visualization type",
+            ["Bar Chart", "Line Chart", "Scatter Plot", "Box Plot", "Histogram", "Pie Chart"]
+        )
+        
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+        
+        if viz_type == "Bar Chart" and cat_cols and numeric_cols:
+            col1, col2 = st.columns(2)
+            with col1:
+                x_col = st.selectbox("X-axis (Category)", cat_cols)
+            with col2:
+                y_col = st.selectbox("Y-axis (Numeric)", numeric_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            df.groupby(x_col)[y_col].mean().plot(kind='bar', ax=ax)
+            plt.xlabel(x_col)
+            plt.ylabel(y_col)
+            plt.title(f'{y_col} by {x_col}')
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        elif viz_type == "Line Chart" and numeric_cols:
+            y_col = st.selectbox("Select Y-axis", numeric_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            df[y_col].plot(kind='line', ax=ax, marker='o')
+            plt.ylabel(y_col)
+            plt.title(f'{y_col} Trend')
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        elif viz_type == "Scatter Plot" and len(numeric_cols) >= 2:
+            col1, col2 = st.columns(2)
+            with col1:
+                x_col = st.selectbox("X-axis", numeric_cols, index=0)
+            with col2:
+                y_col = st.selectbox("Y-axis", numeric_cols, index=1)
+            
+            color_by = st.selectbox("Color by (optional)", ["None"] + cat_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            if color_by != "None":
+                for category in df[color_by].unique():
+                    mask = df[color_by] == category
+                    ax.scatter(df[mask][x_col], df[mask][y_col], label=category, alpha=0.6, s=100)
+                plt.legend()
+            else:
+                ax.scatter(df[x_col], df[y_col], alpha=0.6, s=100)
+            
+            plt.xlabel(x_col)
+            plt.ylabel(y_col)
+            plt.title(f'{y_col} vs {x_col}')
+            plt.grid(True, alpha=0.3)
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        elif viz_type == "Box Plot" and numeric_cols:
+            y_col = st.selectbox("Select column", numeric_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            df.boxplot(column=y_col, ax=ax)
+            plt.ylabel(y_col)
+            plt.title(f'{y_col} Distribution')
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        elif viz_type == "Histogram" and numeric_cols:
+            col = st.selectbox("Select column", numeric_cols)
+            bins = st.slider("Number of bins", 5, 50, 20)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            df[col].hist(bins=bins, ax=ax, edgecolor='black', alpha=0.7)
+            plt.xlabel(col)
+            plt.ylabel('Frequency')
+            plt.title(f'{col} Distribution')
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        elif viz_type == "Pie Chart" and cat_cols:
+            col = st.selectbox("Select column", cat_cols)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            df[col].value_counts().plot(kind='pie', ax=ax, autopct='%1.1f%%')
+            plt.ylabel('')
+            plt.title(f'{col} Distribution')
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        with st.expander("📝 Show Code"):
+            st.code("""
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Bar chart
+df.groupby('Club')['Goals'].mean().plot(kind='bar')
+plt.title('Average Goals by Club')
+plt.show()
+
+# Scatter plot
+plt.scatter(df['Goals'], df['Assists'])
+plt.xlabel('Goals')
+plt.ylabel('Assists')
+plt.show()
+
+# Histogram
+df['Rating'].hist(bins=20)
+plt.xlabel('Rating')
+plt.show()
+
+# Box plot
+df.boxplot(column='Goals')
+plt.show()
+            """, language="python")
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "💾 Export Results":
+    st.header("💾 Export Your Analysis Results")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        
+        st.subheader("Download Options")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 📄 Export to CSV")
+            
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="⬇️ Download CSV",
+                data=csv,
+                file_name='football_analysis_results.csv',
+                mime='text/csv',
+            )
+        
+        with col2:
+            st.markdown("### 📊 Export to Excel")
+            
+            # Create Excel file
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Players', index=False)
+            excel_data = output.getvalue()
+            
+            st.download_button(
+                label="⬇️ Download Excel",
+                data=excel_data,
+                file_name='football_analysis_results.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        
+        st.markdown("---")
+        st.subheader("Export Filtered Data")
+        
+        # Select columns to export
+        selected_cols = st.multiselect(
+            "Select columns to export",
+            df.columns.tolist(),
+            default=df.columns.tolist()
+        )
+        
+        if selected_cols:
+            export_df = df[selected_cols]
+            
+            st.dataframe(export_df.head(), use_container_width=True)
+            
+            csv_filtered = export_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="⬇️ Download Filtered CSV",
+                data=csv_filtered,
+                file_name='filtered_data.csv',
+                mime='text/csv',
+            )
+        
+        with st.expander("📝 Show Code"):
+            st.code("""
+# Save to CSV
+df.to_csv('football_analysis_results.csv', index=False)
+
+# Save to Excel
+df.to_excel('football_analysis_results.xlsx', index=False, sheet_name='Players')
+
+# Save specific columns
+df[['Player_Name', 'Goals', 'Assists']].to_csv('goals_assists.csv', index=False)
+
+# Save filtered data
+high_scorers = df[df['Goals'] > 40]
+high_scorers.to_csv('high_scorers.csv', index=False)
+            """, language="python")
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
+
+elif tutorial_section == "🎓 Complete Example":
+    st.header("🎓 Complete Analysis Example")
+    
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        
+        st.markdown("### 🏆 Comprehensive Football Analytics Report")
+        
+        # Overview metrics
+        st.subheader("📊 Dataset Overview")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Players", len(df))
+        with col2:
+            if 'Club' in df.columns:
+                st.metric("Total Clubs", df['Club'].nunique())
+            else:
+                st.metric("Total Clubs", "N/A")
+        with col3:
+            if 'Goals' in df.columns:
+                st.metric("Total Goals", int(df['Goals'].sum()))
+            else:
+                st.metric("Total Goals", "N/A")
+        with col4:
+            if 'Assists' in df.columns:
+                st.metric("Total Assists", int(df['Assists'].sum()))
+            else:
+                st.metric("Total Assists", "N/A")
+        
+        st.markdown("---")
+        
+        # Top performers
+        if 'Goals' in df.columns and 'Player_Name' in df.columns:
+            st.subheader("🎯 Top 5 Scorers")
+            top_scorers = df.nlargest(5, 'Goals')[['Player_Name', 'Club', 'Goals', 'Matches_Played']]
+            st.dataframe(top_scorers, use_container_width=True)
+        
+        if 'Assists' in df.columns and 'Player_Name' in df.columns:
+            st.subheader("🤝 Top 5 Assist Providers")
+            top_assisters = df.nlargest(5, 'Assists')[['Player_Name', 'Club', 'Assists', 'Matches_Played']]
+            st.dataframe(top_assisters, use_container_width=True)
+        
+        if 'Rating' in df.columns and 'Player_Name' in df.columns:
+            st.subheader("⭐ Top 5 Rated Players")
+            top_rated = df.nlargest(5, 'Rating')[['Player_Name', 'Club', 'Rating', 'Goals', 'Assists']]
+            st.dataframe(top_rated, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Club analysis
+        if 'Club' in df.columns and 'Goals' in df.columns:
+            st.subheader("🏢 Club Statistics")
+            
+            numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+            if numeric_cols:
+                club_stats = df.groupby('Club')[numeric_cols].agg(['sum', 'mean']).round(2)
+                st.dataframe(club_stats, use_container_width=True)
                 
-                code_style = ParagraphStyle(
-                    'Code',
-                    parent=styles['Normal'],
-                    fontSize=8,
-                    fontName='Courier',
-                    spaceAfter=2,
-                    leftIndent=20
-                )
-                
-                # Title
-                story.append(Paragraph("🤖 AI ROBOT HOMEWORK", title_style))
-                story.append(Paragraph("Lesson 1: What is AI?", heading_style))
-                story.append(Spacer(1, 0.2*inch))
-                
-                # Student Info Table
-                student_data = [
-                    ['Student Name:', student_name, 'Age:', str(student_age)],
-                    ['Date:', str(homework_date), '', '']
-                ]
-                student_table = Table(student_data, colWidths=[1.5*inch, 2.5*inch, 0.8*inch, 1*inch])
-                student_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0f4ff')),
-                    ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#764ba2')),
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 10),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 10),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#667eea'))
-                ]))
-                story.append(student_table)
-                story.append(Spacer(1, 0.3*inch))
-                
-                # Option 1: Coding Section
-                if option in ["💻 Option 1: Improve Your Robot (Coding)", "🚀 Both Options!"]:
-                    story.append(Paragraph("💻 OPTION 1: IMPROVE YOUR ROBOT", heading_style))
-                    story.append(Spacer(1, 0.1*inch))
-                    
-                    story.append(Paragraph("<b>What I Added:</b>", normal_style))
-                    for key, value in coding_responses.items():
-                        if key != 'notes' and value:
-                            icon = {'food': '🍕', 'fact': '🧠', 'subject': '📚', 'joke': '😄'}.get(key, '✓')
-                            story.append(Paragraph(f"• {icon} {key.capitalize()} response", normal_style))
-                    
-                    if coding_responses.get('notes'):
-                        story.append(Spacer(1, 0.1*inch))
-                        story.append(Paragraph("<b>Additional Features:</b>", normal_style))
-                        story.append(Paragraph(coding_responses['notes'], normal_style))
-                    
-                    story.append(Spacer(1, 0.15*inch))
-                    story.append(Paragraph("<b>My Robot Code:</b>", normal_style))
-                    story.append(Spacer(1, 0.05*inch))
-                    
-                    # Add code with line numbers
-                    code_lines = st.session_state.user_code.split('\n')
-                    for i, line in enumerate(code_lines[:40], 1):  # Limit to first 40 lines
-                        clean_line = line.replace('<', '&lt;').replace('>', '&gt;').replace('&', '&amp;')
-                        story.append(Paragraph(f"{i:3d} | {clean_line}", code_style))
-                    
-                    if len(code_lines) > 40:
-                        story.append(Paragraph(f"... ({len(code_lines) - 40} more lines)", code_style))
-                    
-                    story.append(Spacer(1, 0.2*inch))
-                
-                # Option 2: Creative Design Section
-                if option in ["🎨 Option 2: Design Your Dream Robot (Creative)", "🚀 Both Options!"]:
-                    if option == "🚀 Both Options!":
-                        story.append(PageBreak())
-                    
-                    story.append(Paragraph("🎨 OPTION 2: DESIGN YOUR DREAM ROBOT", heading_style))
-                    story.append(Spacer(1, 0.15*inch))
-                    
-                    # Add drawing if available
-                    if st.session_state.uploaded_drawing:
-                        img_buffer = io.BytesIO()
-                        # Resize image to fit
-                        img = st.session_state.uploaded_drawing
-                        img.thumbnail((450, 300), Image.Resampling.LANCZOS)
-                        img.save(img_buffer, format='PNG')
-                        img_buffer.seek(0)
-                        
-                        rl_img = RLImage(img_buffer, width=4*inch, height=2.5*inch)
-                        story.append(rl_img)
-                        story.append(Spacer(1, 0.15*inch))
-                    
-                    # Add description if provided
-                    if creative_responses.get('description'):
-                        story.append(Paragraph("<b>Robot Description:</b>", normal_style))
-                        story.append(Paragraph(creative_responses['description'], normal_style))
-                        story.append(Spacer(1, 0.1*inch))
-                    
-                    # Questions and answers
-                    questions = [
-                        ("🤖 Robot's Name:", creative_responses.get('name', '')),
-                        ("⚙️ What does it do:", creative_responses.get('function', '')),
-                        ("💝 How it helps people:", creative_responses.get('help', '')),
-                        ("✨ What makes it special:", creative_responses.get('special', ''))
-                    ]
-                    
-                    for q, a in questions:
-                        if a:
-                            story.append(Paragraph(f"<b>{q}</b>", normal_style))
-                            story.append(Paragraph(a, normal_style))
-                            story.append(Spacer(1, 0.08*inch))
-                
-                # Bonus Challenge
-                if bonus1 or bonus2:
-                    story.append(Spacer(1, 0.15*inch))
-                    story.append(Paragraph("🌟 BONUS CHALLENGE", heading_style))
-                    
-                    if bonus1:
-                        story.append(Paragraph("🎯 <b>Remember User Name</b>", normal_style))
-                        if bonus1_code:
-                            for line in bonus1_code.split('\n'):
-                                clean_line = line.replace('<', '&lt;').replace('>', '&gt;')
-                                story.append(Paragraph(clean_line, code_style))
-                        story.append(Spacer(1, 0.08*inch))
-                    
-                    if bonus2:
-                        story.append(Paragraph("🎲 <b>Random Responses</b>", normal_style))
-                        if bonus2_code:
-                            for line in bonus2_code.split('\n'):
-                                clean_line = line.replace('<', '&lt;').replace('>', '&gt;')
-                                story.append(Paragraph(clean_line, code_style))
-                
-                # Footer
-                story.append(Spacer(1, 0.4*inch))
-                footer_style = ParagraphStyle(
-                    'Footer',
-                    parent=styles['Normal'],
-                    fontSize=12,
-                    textColor=colors.HexColor('#764ba2'),
-                    alignment=TA_CENTER,
-                    fontName='Helvetica-Bold'
-                )
-                story.append(Paragraph("📚 Bring to Next Class! 🚀", footer_style))
-                story.append(Spacer(1, 0.1*inch))
-                story.append(Paragraph("Have fun learning AI!", footer_style))
-                
-                # Build PDF
-                doc.build(story)
-                buffer.seek(0)
-                
-                # Success message
-                st.success("✅ Your homework PDF is ready!")
-                
-                # Download button
-                st.download_button(
-                    label="💾 Download Your Homework PDF",
-                    data=buffer,
-                    file_name=f"AI_Homework_{student_name.replace(' ', '_')}_{homework_date}.pdf",
-                    mime="application/pdf",
-                    type="primary"
-                )
-                
-                st.balloons()
-                
-            except Exception as e:
-                st.error(f"❌ Error creating PDF: {str(e)}")
-                st.error("Please make sure you've filled in all required fields.")
+                # Visualization
+                st.subheader("📊 Goals by Club")
+                fig, ax = plt.subplots(figsize=(12, 6))
+                df.groupby('Club')['Goals'].sum().sort_values(ascending=False).plot(kind='bar', ax=ax)
+                plt.ylabel('Total Goals')
+                plt.title('Total Goals by Club')
+                plt.xticks(rotation=45)
+                plt.tight_layout()
+                st.pyplot(fig)
+        
+        st.markdown("---")
+        
+        # Statistical summary
+        st.subheader("📈 Statistical Summary")
+        
+        if 'Goals' in df.columns:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("#### Goals Statistics")
+                st.write(f"**Average:** {df['Goals'].mean():.2f}")
+                st.write(f"**Median:** {df['Goals'].median():.2f}")
+                st.write(f"**Std Dev:** {df['Goals'].std():.2f}")
+        
+            with col2:
+                if 'Assists' in df.columns:
+                    st.markdown("#### Assists Statistics")
+                    st.write(f"**Average:** {df['Assists'].mean():.2f}")
+                    st.write(f"**Median:** {df['Assists'].median():.2f}")
+                    st.write(f"**Std Dev:** {df['Assists'].std():.2f}")
+            
+            with col3:
+                if 'Rating' in df.columns:
+                    st.markdown("#### Rating Statistics")
+                    st.write(f"**Average:** {df['Rating'].mean():.2f}")
+                    st.write(f"**Median:** {df['Rating'].median():.2f}")
+                    st.write(f"**Std Dev:** {df['Rating'].std():.2f}")
+        
+        st.markdown("---")
+        
+        # Correlation analysis
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        if len(numeric_cols) >= 2:
+            st.subheader("🔗 Correlation Analysis")
+            
+            fig, ax = plt.subplots(figsize=(10, 8))
+            correlation_matrix = df[numeric_cols].corr()
+            sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, ax=ax, fmt='.2f')
+            plt.title('Feature Correlation Matrix')
+            plt.tight_layout()
+            st.pyplot(fig)
+        
+        st.markdown("---")
+        
+        # Download full report
+        st.subheader("💾 Download Complete Report")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            csv = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="⬇️ Download Full Dataset (CSV)",
+                data=csv,
+                file_name='complete_analysis.csv',
+                mime='text/csv',
+            )
+        
+        with col2:
+            from io import BytesIO
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Full Data', index=False)
+                if 'Goals' in df.columns and 'Player_Name' in df.columns:
+                    df.nlargest(10, 'Goals').to_excel(writer, sheet_name='Top Scorers', index=False)
+                if 'Club' in df.columns:
+                    df.groupby('Club').mean().to_excel(writer, sheet_name='Club Stats')
+            
+            st.download_button(
+                label="⬇️ Download Full Report (Excel)",
+                data=output.getvalue(),
+                file_name='complete_report.xlsx',
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        
+        with st.expander("📝 Show Complete Code"):
+            st.code("""
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load data
+df = pd.read_csv('football_players_2015_2024.csv')
+
+# Overview
+print(f"Total Players: {len(df)}")
+print(f"Total Clubs: {df['Club'].nunique()}")
+print(f"Total Goals: {df['Goals'].sum()}")
+
+# Top performers
+print("\\nTop 5 Scorers:")
+print(df.nlargest(5, 'Goals')[['Player_Name', 'Club', 'Goals']])
+
+print("\\nTop 5 Assist Providers:")
+print(df.nlargest(5, 'Assists')[['Player_Name', 'Club', 'Assists']])
+
+print("\\nTop 5 Rated Players:")
+print(df.nlargest(5, 'Rating')[['Player_Name', 'Club', 'Rating']])
+
+# Club analysis
+club_stats = df.groupby('Club').agg({
+    'Goals': ['sum', 'mean'],
+    'Assists': ['sum', 'mean'],
+    'Rating': 'mean'
+}).round(2)
+print("\\nClub Statistics:")
+print(club_stats)
+
+# Statistical summary
+print("\\nStatistical Summary:")
+print(f"Average Goals: {df['Goals'].mean():.2f}")
+print(f"Average Assists: {df['Assists'].mean():.2f}")
+print(f"Average Rating: {df['Rating'].mean():.2f}")
+
+# Correlation
+correlation = df[['Goals', 'Assists', 'Rating']].corr()
+print("\\nCorrelation Matrix:")
+print(correlation)
+
+# Visualizations
+plt.figure(figsize=(12, 6))
+df.groupby('Club')['Goals'].sum().sort_values().plot(kind='barh')
+plt.title('Total Goals by Club')
+plt.xlabel('Goals')
+plt.tight_layout()
+plt.savefig('goals_by_club.png')
+
+# Save results
+df.to_csv('complete_analysis.csv', index=False)
+club_stats.to_csv('club_statistics.csv')
+
+print("\\n✅ Analysis complete!")
+            """, language="python")
+    else:
+        st.warning("⚠️ Please upload a dataset first!")
 
 # Footer
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; color: white; padding: 20px;'>
-    <h3>🎓 Tips for Success:</h3>
-    <p>✓ Test your code with the "Run Code" button!</p>
-    <p>✓ Upload a clear photo of your robot drawing!</p>
-    <p>✓ Be creative with your responses!</p>
-    <p>✓ Answer all questions completely!</p>
-    <p>✓ Download your PDF when you're done!</p>
+<div style='text-align: center; color: #666; padding: 2rem;'>
+    <p><strong>🐼 Pandas Football Analytics Tutorial</strong></p>
+    <p>Built with Streamlit | Made for learning data analysis</p>
+    <p>📚 <a href='https://pandas.pydata.org/docs/' target='_blank'>Pandas Documentation</a> | 
+       🎨 <a href='https://streamlit.io/' target='_blank'>Streamlit Docs</a></p>
 </div>
 """, unsafe_allow_html=True)
