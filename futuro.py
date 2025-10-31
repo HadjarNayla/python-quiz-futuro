@@ -1,110 +1,149 @@
-# 🐼 PANDAS TUTORIAL FOR BEGINNERS — FOOTBALL DATASET (2015–2024)
-# ---------------------------------------------------------------
-# 🎯 Goal:
-# Learn how to use Pandas for data loading, exploration, cleaning,
-# analysis, and saving results — using a real Football dataset.
-# ---------------------------------------------------------------
+# 🎓 STREAMLIT APP — Learn Pandas from 0️⃣ to 🦸 Hero
+# ---------------------------------------------------
+# 🧠 Goal:
+# Teach beginners how to explore, clean, and analyze datasets using Pandas interactively.
+# Dataset used: Football Players Dataset (2015–2024)
+# ---------------------------------------------------
 
-# Step 1️⃣: Import Pandas
+import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
-# Step 2️⃣: Load the Dataset
-# (Make sure the file 'football_players.csv' is in your working directory)
-df = pd.read_csv("football_players.csv")
+# 🏁 App Title
+st.title("🐼 Pandas From 0️⃣ to Hero — Interactive Learning App")
+st.write("""
+Welcome! 👋  
+This app helps you **learn Pandas** step-by-step using a real dataset.
+We’ll explore, clean, and analyze football player data together ⚽.
+""")
 
-# Step 3️⃣: First Look at the Data
-print("✅ First 5 rows of the dataset:\n", df.head())
-print("\n📏 Shape of dataset (rows, columns):", df.shape)
-print("\n📋 Columns available:\n", df.columns.tolist())
+# 📂 Step 1 — Upload or Use Example Dataset
+st.header("📂 Step 1: Load Dataset")
 
-# Step 4️⃣: Basic Info
-print("\nℹ️ Dataset Info:")
-print(df.info())
-print("\n📈 Numeric Summary:")
-print(df.describe())
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.success("✅ File uploaded successfully!")
+else:
+    st.info("No file uploaded — using example football dataset.")
+    data = {
+        'Player_Name': ['Messi', 'Mbappé', 'Salah', 'Ronaldo', 'De Bruyne', 'Haaland', 'Benzema', 'Neymar'],
+        'Club': ['PSG', 'PSG', 'Liverpool', 'Al Nassr', 'Man City', 'Man City', 'Real Madrid', 'Al Hilal'],
+        'Goals': [25, 28, 20, 30, 12, 27, 22, 18],
+        'Assists': [15, 12, 9, 8, 18, 6, 10, 11],
+        'Rating': [9.5, 9.3, 8.8, 9.0, 9.2, 9.1, 8.9, 9.0],
+        'Matches': [30, 32, 29, 31, 30, 28, 30, 27]
+    }
+    df = pd.DataFrame(data)
 
-# Step 5️⃣: Check Missing Values
-print("\n❓ Missing values in each column:\n", df.isnull().sum())
+# Display Data
+st.subheader("📊 Dataset Preview")
+st.dataframe(df.head())
 
-# Step 6️⃣: Clean the Data
-# Replace missing numeric values with mean and text with 'Unknown'
-df['Goals'].fillna(df['Goals'].mean(), inplace=True)
-df['Assists'].fillna(df['Assists'].mean(), inplace=True)
-df['Rating'].fillna(df['Rating'].mean(), inplace=True)
-df['Matches'].fillna(df['Matches'].median(), inplace=True)
-df['Player_Name'].fillna('Unknown', inplace=True)
-df['Club'].fillna('Unknown', inplace=True)
-print("\n🧹 Cleaned all missing values!")
+# 🔍 Step 2 — Explore the Dataset
+st.header("🔍 Step 2: Explore Basic Info")
+if st.checkbox("Show Data Info"):
+    buffer = []
+    df.info(buf=buffer)
+    info_str = "\n".join(buffer)
+    st.text(info_str)
 
-# Step 7️⃣: View Clean Data
-print("\n✅ Sample of Clean Data:")
-print(df.head())
+if st.checkbox("Show Summary Statistics"):
+    st.write(df.describe())
 
-# Step 8️⃣: Simple Selection
-print("\n🎯 Select Player Names and Clubs:")
-print(df[['Player_Name', 'Club']].head())
+if st.checkbox("Show Missing Values"):
+    st.write(df.isnull().sum())
 
-print("\n⚽ Top 5 Players by Goals:")
-print(df[['Player_Name', 'Goals']].sort_values(by='Goals', ascending=False).head())
+# 🧹 Step 3 — Clean the Data
+st.header("🧹 Step 3: Data Cleaning")
+if st.button("Clean Missing Data"):
+    df.fillna({
+        'Goals': df['Goals'].mean(),
+        'Assists': df['Assists'].mean(),
+        'Rating': df['Rating'].mean(),
+        'Matches': df['Matches'].median()
+    }, inplace=True)
+    st.success("✅ Missing data cleaned!")
 
-# Step 9️⃣: Filtering Data
-print("\n🔥 Players who scored more than 20 goals:")
-print(df[df['Goals'] > 20][['Player_Name', 'Goals', 'Club']])
+st.write("Cleaned Data:")
+st.dataframe(df.head())
 
-print("\n⭐ Players with Rating above 9.0:")
-print(df[df['Rating'] > 9.0][['Player_Name', 'Rating', 'Club']])
+# ⚙️ Step 4 — Create New Columns
+st.header("⚙️ Step 4: Create New Columns")
+if st.button("Add Goal_Contribution & Efficiency"):
+    df['Goal_Contribution'] = df['Goals'] + df['Assists']
+    df['Goals_per_Match'] = (df['Goals'] / df['Matches']).round(2)
+    df['Efficiency'] = (df['Goals_per_Match'] * df['Rating']).round(2)
+    st.success("🆕 Columns added successfully!")
+    st.dataframe(df.head())
 
-# Step 🔟: Grouping and Aggregation
-print("\n📊 Average Goals per Club:")
-print(df.groupby('Club')['Goals'].mean())
+# 📈 Step 5 — Visualize
+st.header("📈 Step 5: Data Visualization")
 
-print("\n🎯 Total Assists per Club:")
-print(df.groupby('Club')['Assists'].sum())
+chart_type = st.selectbox("Choose a chart to visualize:", [
+    "Top Players by Goals",
+    "Top Players by Rating",
+    "Relationship: Goals vs Rating",
+    "Goals per Club"
+])
 
-# Step 1️⃣1️⃣: Add New Columns
-df['Goal_Contribution'] = df['Goals'] + df['Assists']
-df['Goals_per_Match'] = (df['Goals'] / df['Matches']).round(2)
-df['Efficiency'] = (df['Goals_per_Match'] * df['Rating']).round(2)
-print("\n🆕 Added new columns: Goal_Contribution, Goals_per_Match, Efficiency")
-print(df.head())
+if chart_type == "Top Players by Goals":
+    top_goals = df.sort_values(by='Goals', ascending=False).head(10)
+    fig, ax = plt.subplots()
+    ax.bar(top_goals['Player_Name'], top_goals['Goals'], color='green')
+    ax.set_title("⚽ Top 10 Players by Goals")
+    ax.set_ylabel("Goals")
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
-# Step 1️⃣2️⃣: Sorting and Ranking
-print("\n🥇 Top 10 Players by Goals:")
-print(df.sort_values(by='Goals', ascending=False)[['Player_Name', 'Goals', 'Club']].head(10))
+elif chart_type == "Top Players by Rating":
+    top_ratings = df.sort_values(by='Rating', ascending=False).head(10)
+    fig, ax = plt.subplots()
+    ax.barh(top_ratings['Player_Name'], top_ratings['Rating'], color='orange')
+    ax.set_title("🌟 Top 10 Players by Rating")
+    st.pyplot(fig)
 
-print("\n💪 Top 10 Players by Efficiency:")
-print(df.sort_values(by='Efficiency', ascending=False)[['Player_Name', 'Efficiency', 'Club']].head(10))
+elif chart_type == "Relationship: Goals vs Rating":
+    fig, ax = plt.subplots()
+    ax.scatter(df['Goals'], df['Rating'], color='purple')
+    ax.set_title("⚽ Relationship: Goals vs Rating")
+    ax.set_xlabel("Goals")
+    ax.set_ylabel("Rating")
+    st.pyplot(fig)
 
-# Step 1️⃣3️⃣: Descriptive Statistics by Club
-print("\n📈 Statistics per Club:")
-print(df.groupby('Club')[['Goals', 'Assists', 'Rating']].mean().round(2))
+elif chart_type == "Goals per Club":
+    club_goals = df.groupby('Club')['Goals'].mean().sort_values(ascending=False)
+    fig, ax = plt.subplots()
+    ax.bar(club_goals.index, club_goals.values, color='skyblue')
+    ax.set_title("🏆 Average Goals per Club")
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
-# Step 1️⃣4️⃣: Apply Function
-def performance_level(rating):
-    if rating >= 9:
-        return 'Elite'
-    elif rating >= 8:
-        return 'Excellent'
-    elif rating >= 7:
-        return 'Good'
-    else:
-        return 'Average'
+# 🧩 Step 6 — Student Challenges
+st.header("🧩 Step 6: Try it Yourself!")
+st.markdown("""
+🎯 **Mini Exercises:**
+1️⃣ Show only players with more than 20 goals.  
+2️⃣ Show players with rating above 9.  
+3️⃣ Find average goals per club.  
+4️⃣ Create a new column: `Performance_Level` based on Rating  
+   - Rating ≥ 9 → Elite  
+   - Rating ≥ 8 → Excellent  
+   - Rating ≥ 7 → Good  
+   - Else → Average  
+""")
 
-df['Performance_Level'] = df['Rating'].apply(performance_level)
-print("\n🏅 Added Performance_Level based on Rating:")
-print(df[['Player_Name', 'Rating', 'Performance_Level']].head())
+if st.button("Show Solutions 💡"):
+    df['Performance_Level'] = df['Rating'].apply(
+        lambda r: 'Elite' if r >= 9 else 'Excellent' if r >= 8 else 'Good'
+    )
+    st.dataframe(df[['Player_Name', 'Rating', 'Performance_Level']])
 
-# Step 1️⃣5️⃣: Filtering Example with Multiple Conditions
-print("\n🎯 Top Elite Players (Rating ≥ 9 & Goals ≥ 15):")
-elite = df[(df['Rating'] >= 9) & (df['Goals'] >= 15)]
-print(elite[['Player_Name', 'Goals', 'Rating', 'Club']])
+# 💾 Step 7 — Save Results
+st.header("💾 Step 7: Save Your Work")
+if st.button("Download Clean Data"):
+    df.to_csv("clean_football_dataset.csv", index=False)
+    st.success("✅ File saved as 'clean_football_dataset.csv'")
 
-# Step 1️⃣6️⃣: Save Cleaned Data
-df.to_csv("football_players_clean.csv", index=False)
-print("\n💾 Clean dataset saved as 'football_players_clean.csv'")
-
-# Step 1️⃣7️⃣: End Summary
-print("\n✅ Tutorial completed successfully!")
-print("You have learned:")
-print("1️⃣ Load data  2️⃣ Clean data  3️⃣ Analyze with Pandas")
-print("4️⃣ Create new columns  5️⃣ Save your results")
+# 🏁 End Message
+st.success("🎉 Congratulations! You’ve learned Pandas basics interactively 🐼🔥")
