@@ -36,7 +36,6 @@ def df_to_excel_bytes(df):
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False)
-        writer.save()
     return buffer.getvalue()
 
 if uploaded_file:
@@ -89,7 +88,7 @@ if uploaded_file:
 
     with st.expander("🔹 df.describe() — Statistical summary | ملخص إحصائي"):
         st.code("df.describe()", language="python")
-        st.write(df.describe(include='all').astype(str).head(20))
+        st.write(df.describe(include='all'))
         st.write("Stats for numeric and object columns. | إحصائيات للأعمدة الرقمية والنصية.")
 
     with st.expander("🔹 df.dtypes — Data types of each column | أنواع البيانات لكل عمود"):
@@ -133,9 +132,9 @@ if uploaded_file:
         col_old = st.selectbox("Select column to rename:", df.columns, key="rename_old")
         col_new = st.text_input("New name:", f"{col_old}_renamed", key="rename_new")
         if st.button("Rename column"):
-            df = df.rename(columns={col_old: col_new})
+            df_renamed = df.rename(columns={col_old: col_new})
             st.success(f"Renamed {col_old} -> {col_new}")
-            st.write(df.columns.tolist())
+            st.write(df_renamed.columns.tolist())
 
     with st.expander("🔹 df.drop() — Remove columns or rows | إزالة الأعمدة أو الصفوف"):
         st.code("df.drop('ColumnName', axis=1)", language="python")
@@ -170,27 +169,31 @@ if uploaded_file:
 
     with st.expander("🔹 Filter rows with condition | تصفية الصفوف بشرط"):
         st.code("df[df['Goals'] > 10]", language="python")
-        cond_col = st.selectbox("Column to filter by (must be numeric):", [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])], key="filter_col")
-        op = st.selectbox("Operator:", [">", "<", ">=", "<=", "==", "!="], key="filter_op")
-        value = st.text_input("Value to compare:", "0", key="filter_val")
-        try:
-            val = float(value)
-            if op == ">":
-                out = df[df[cond_col] > val]
-            elif op == "<":
-                out = df[df[cond_col] < val]
-            elif op == ">=":
-                out = df[df[cond_col] >= val]
-            elif op == "<=":
-                out = df[df[cond_col] <= val]
-            elif op == "==":
-                out = df[df[cond_col] == val]
-            else:
-                out = df[df[cond_col] != val]
-            st.write(safe_head(out, 10))
-            st.write(f"Filtered rows: {len(out)}")
-        except Exception as e:
-            st.write("Could not apply filter:", e)
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            cond_col = st.selectbox("Column to filter by (must be numeric):", numeric_cols, key="filter_col")
+            op = st.selectbox("Operator:", [">", "<", ">=", "<=", "==", "!="], key="filter_op")
+            value = st.text_input("Value to compare:", "0", key="filter_val")
+            try:
+                val = float(value)
+                if op == ">":
+                    out = df[df[cond_col] > val]
+                elif op == "<":
+                    out = df[df[cond_col] < val]
+                elif op == ">=":
+                    out = df[df[cond_col] >= val]
+                elif op == "<=":
+                    out = df[df[cond_col] <= val]
+                elif op == "==":
+                    out = df[df[cond_col] == val]
+                else:
+                    out = df[df[cond_col] != val]
+                st.write(safe_head(out, 10))
+                st.write(f"Filtered rows: {len(out)}")
+            except Exception as e:
+                st.write("Could not apply filter:", e)
+        else:
+            st.write("No numeric columns available for filtering.")
 
     with st.expander("🔹 iloc and loc — Index selection | اختيار الفهرس"):
         st.code("df.iloc[0:5, 0:3]  # by index\ndf.loc[0:5, ['Name','Club']]", language="python")
@@ -199,7 +202,7 @@ if uploaded_file:
         cstart = st.number_input("Col start index (iloc):", min_value=0, max_value=max(0, len(df.columns)-1), value=0, key="iloc_cs")
         cend = st.number_input("Col end index (iloc):", min_value=0, max_value=max(0, len(df.columns)), value=min(3, len(df.columns)), key="iloc_ce")
         try:
-            st.write(safe_head(df.iloc[rstart:rend, cstart:cend], 10))
+            st.write(df.iloc[int(rstart):int(rend), int(cstart):int(cend)])
         except Exception as e:
             st.write("iloc selection failed:", e)
         st.write("You can also use df.loc with labels if your index is labeled.")
@@ -242,14 +245,19 @@ if uploaded_file:
 
     with st.expander("🔹 df.apply() — Apply custom functions | تطبيق وظائف مخصصة"):
         st.code("df['Goals'].apply(lambda x: x * 2)", language="python")
-        apply_col = st.selectbox("Column to apply function to (numeric):", [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])], key="apply_col")
-        if st.button("Apply x2 to selected column"):
-            try:
-                df[f"{apply_col}_x2"] = df[apply_col].apply(lambda x: x * 2)
-                st.write(safe_head(df[[apply_col, f"{apply_col}_x2"]], 10))
-                st.success("Applied function and added new column.")
-            except Exception as e:
-                st.error(f"Apply failed: {e}")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            apply_col = st.selectbox("Column to apply function to (numeric):", numeric_cols, key="apply_col")
+            if st.button("Apply x2 to selected column"):
+                try:
+                    df_copy = df.copy()
+                    df_copy[f"{apply_col}_x2"] = df_copy[apply_col].apply(lambda x: x * 2)
+                    st.write(safe_head(df_copy[[apply_col, f"{apply_col}_x2"]], 10))
+                    st.success("Applied function and added new column.")
+                except Exception as e:
+                    st.error(f"Apply failed: {e}")
+        else:
+            st.write("No numeric columns available.")
 
     with st.expander("🔹 df.merge() — Combine two datasets | دمج مجموعتي بيانات"):
         st.code("pd.merge(df1, df2, on='ID')", language="python")
@@ -356,8 +364,9 @@ if uploaded_file:
             new_col_name = st.text_input("New column name:", f"{cond_col2}_flag", key="cond_newname")
             if st.button("Create conditional column"):
                 try:
-                    df[new_col_name] = np.where(df[cond_col2] > val, "Yes", "No")
-                    st.write(safe_head(df[[cond_col2, new_col_name]], 10))
+                    df_copy = df.copy()
+                    df_copy[new_col_name] = np.where(df_copy[cond_col2] > val, "Yes", "No")
+                    st.write(safe_head(df_copy[[cond_col2, new_col_name]], 10))
                 except Exception as e:
                     st.write("Conditional creation failed:", e)
         else:
@@ -412,12 +421,14 @@ if uploaded_file:
 
     with st.expander("🔹 rolling & expanding"):
         st.code("df['rolling_mean'] = df['Value'].rolling(window=3).mean()", language="python")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if numeric_cols:
             win_col = st.selectbox("Choose numeric column for rolling:", numeric_cols, key="rolling_col")
             window = st.number_input("Window size:", min_value=1, max_value=100, value=3, key="rolling_window")
             try:
-                df[f"{win_col}_rolling_mean"] = df[win_col].rolling(window=window).mean()
-                st.write(safe_head(df[[win_col, f"{win_col}_rolling_mean"]], 10))
+                df_copy = df.copy()
+                df_copy[f"{win_col}_rolling_mean"] = df_copy[win_col].rolling(window=int(window)).mean()
+                st.write(safe_head(df_copy[[win_col, f"{win_col}_rolling_mean"]], 10))
             except Exception as e:
                 st.write("Rolling failed:", e)
         else:
@@ -425,12 +436,14 @@ if uploaded_file:
 
     with st.expander("🔹 ewm (exponential moving average)"):
         st.code("df['ewm_mean'] = df['Value'].ewm(alpha=0.5).mean()", language="python")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if numeric_cols:
             ewm_col = st.selectbox("Choose column for EWM:", numeric_cols, key="ewm_col")
             span = st.number_input("Span (int):", min_value=1, max_value=100, value=5, key="ewm_span")
             try:
-                df[f"{ewm_col}_ewm"] = df[ewm_col].ewm(span=span, adjust=False).mean()
-                st.write(safe_head(df[[ewm_col, f"{ewm_col}_ewm"]], 10))
+                df_copy = df.copy()
+                df_copy[f"{ewm_col}_ewm"] = df_copy[ewm_col].ewm(span=int(span), adjust=False).mean()
+                st.write(safe_head(df_copy[[ewm_col, f"{ewm_col}_ewm"]], 10))
             except Exception as e:
                 st.write("EWM failed:", e)
         else:
@@ -457,10 +470,11 @@ if uploaded_file:
                 st.write(safe_head(df[text_col].str.strip(), 10))
             elif op == "contains":
                 pat = st.text_input("Substring / regex to search for:", "", key="contains_pat")
-                try:
-                    st.write(safe_head(df[text_col].str.contains(pat, na=False), 10))
-                except Exception as e:
-                    st.write("Contains search failed:", e)
+                if pat:
+                    try:
+                        st.write(safe_head(df[text_col].str.contains(pat, na=False), 10))
+                    except Exception as e:
+                        st.write("Contains search failed:", e)
             elif op == "split":
                 sep = st.text_input("Separator (default whitespace):", " ", key="split_sep")
                 try:
@@ -477,16 +491,14 @@ if uploaded_file:
 
     with st.expander("🔹 Convert to datetime & resample"):
         st.code("df['Date'] = pd.to_datetime(df['Date'])\ndf.set_index('Date', inplace=True)\ndf.resample('M').mean()", language="python")
-        date_cols = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c]) or df[c].astype(str).str.match(r'\d{4}[-/]\d{1,2}[-/]\d{1,2}').any()]
-        # present available columns and let user convert
-        st.write("Detected likely date-like columns (heuristic):", date_cols[:5])
         chosen_date_col = st.selectbox("Choose a column to convert to datetime (if any):", ["<none>"] + df.columns.tolist(), key="date_col")
         if chosen_date_col != "<none>":
             try:
-                df[chosen_date_col] = pd.to_datetime(df[chosen_date_col], errors='coerce')
-                st.write(df[chosen_date_col].dt.strftime('%Y-%m-%d').head(10))
+                df_copy = df.copy()
+                df_copy[chosen_date_col] = pd.to_datetime(df_copy[chosen_date_col], errors='coerce')
+                st.write(df_copy[chosen_date_col].dt.strftime('%Y-%m-%d').head(10))
                 if st.checkbox("Set this column as index and resample monthly mean preview", key="resample_check"):
-                    df_ts = df.set_index(chosen_date_col)
+                    df_ts = df_copy.set_index(chosen_date_col)
                     st.write(safe_head(df_ts.resample('M').mean(numeric_only=True), 10))
             except Exception as e:
                 st.write("Datetime conversion failed:", e)
@@ -508,7 +520,7 @@ if uploaded_file:
                     df_preview[c] = df_preview[c].apply(lambda x: x.strip() if isinstance(x, str) else x)
                 st.write(safe_head(df_preview[obj_cols], 10))
             except Exception as e:
-                st.write("applymap failed:", e)
+                st.write("apply failed:", e)
 
     # ----------------------------
     # 🧮 CROSSTABS & PIVOT
@@ -528,13 +540,13 @@ if uploaded_file:
             st.write("Not enough columns for crosstab demo.")
 
     # ----------------------------
-    # 🧱 COMBINING DATASETS (append/concat/merge)
+    # 🧱 COMBINING DATASETS
     # ----------------------------
     st.header("🧱 Combining Datasets | دمج البيانات")
 
     with st.expander("🔹 Append / concat / join examples"):
-        st.code("pd.concat([df1, df2]); df.append(row); df.join(other_df)", language="python")
-        st.write("Use concat to stack, join to combine by index, append is deprecated in newer pandas versions.")
+        st.code("pd.concat([df1, df2]); df.join(other_df)", language="python")
+        st.write("Use concat to stack, join to combine by index. Note: df.append() is deprecated in newer pandas versions.")
 
     # ----------------------------
     # 📊 CORRELATION & COVARIANCE
@@ -544,7 +556,7 @@ if uploaded_file:
     with st.expander("🔹 df.corr() and df.cov()"):
         st.code("df.corr(); df.cov()", language="python")
         try:
-            corr = df.corr()
+            corr = df.corr(numeric_only=True)
             st.write(safe_head(corr, 20))
             st.write("You can visualize the correlation matrix using a heatmap externally.")
         except Exception as e:
@@ -563,7 +575,7 @@ if uploaded_file:
             if st.button("Convert object columns to category where appropriate (preview)"):
                 df_preview = df.copy()
                 for c in df_preview.columns:
-                    if df_preview[c].nunique() < (len(df_preview) * 0.5) and df_preview[c].dtype == object:
+                    if df_preview[c].dtype == object and df_preview[c].nunique() < (len(df_preview) * 0.5):
                         df_preview[c] = df_preview[c].astype('category')
                 st.write(safe_head(df_preview.dtypes, 50))
         except Exception as e:
@@ -577,9 +589,10 @@ if uploaded_file:
     with st.expander("🔹 to_csv with encoding, to_json, to_pickle"):
         st.code("df.to_csv('file.csv', sep=';', encoding='utf-8')", language="python")
         st.write("Use `to_pickle` for faster local re-loads: df.to_pickle('data.pkl')")
+        st.write("Use `to_json` for web APIs: df.to_json('data.json')")
 
     # ----------------------------
-    # 🧪 USEFUL SHORTCUTS (display options)
+    # 🧪 USEFUL SHORTCUTS
     # ----------------------------
     st.header("🧪 Useful Shortcuts | اختصارات مفيدة")
 
@@ -588,10 +601,10 @@ if uploaded_file:
         if st.button("Show all columns (temporary)"):
             pd.set_option('display.max_columns', None)
             st.write("Max columns display set to None (for this session).")
-        st.write("You can style DataFrame for reports (df.style...).")
+        st.write("You can style DataFrame for reports using df.style methods.")
 
     # ----------------------------
-    # 31-50: EXPERT LEVEL (merged into sections)
+    # ⚡ EXPERT LEVEL
     # ----------------------------
     st.header("⚡ Expert-Level Pandas (31-50) | مستوى متقدم")
 
@@ -612,12 +625,12 @@ if uploaded_file:
                 st.write("No good categorical candidates for demo.")
 
     with st.expander("🔹 Math & logical operations"):
-        st.code("df['Normalized'] = (df['Value'] - min)/(max-min)", language="python")
+        st.code("df['Normalized'] = (df['Value'] - df['Value'].min())/(df['Value'].max()-df['Value'].min())", language="python")
         st.write("Normalization, log transforms, boolean masks — use numpy functions (np.log, np.where).")
 
     with st.expander("🔹 Time series resampling & shifting"):
         st.code("df.shift(1); df['diff'] = df['Value'].diff()", language="python")
-        st.write("Shift and diff are handy for time-based features.")
+        st.write("Shift and diff are handy for time-based features and lag calculations.")
 
     with st.expander("🔹 Styling DataFrames for reports"):
         st.code("df.style.background_gradient()", language="python")
@@ -641,15 +654,21 @@ if uploaded_file:
 
     with st.expander("🔹 Visualization with matplotlib"):
         st.code("df.groupby('Dept')['Salary'].mean().plot(kind='bar')", language="python")
-        try:
-            viz_col = st.selectbox("Choose a numeric column to histogram (expert):", [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])], key="viz_col")
-            if st.button("Show histogram"):
-                fig, ax = plt.subplots()
-                df[viz_col].dropna().hist(ax=ax)
-                ax.set_title(f"Histogram of {viz_col}")
-                st.pyplot(fig)
-        except Exception as e:
-            st.write("Plot failed:", e)
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            try:
+                viz_col = st.selectbox("Choose a numeric column to histogram (expert):", numeric_cols, key="viz_col")
+                if st.button("Show histogram"):
+                    fig, ax = plt.subplots()
+                    df[viz_col].dropna().hist(ax=ax, bins=20)
+                    ax.set_title(f"Histogram of {viz_col}")
+                    ax.set_xlabel(viz_col)
+                    ax.set_ylabel("Frequency")
+                    st.pyplot(fig)
+            except Exception as e:
+                st.write("Plot failed:", e)
+        else:
+            st.write("No numeric columns available for visualization.")
 
     with st.expander("🔹 Working with large datasets (chunks & dtypes)"):
         st.code("pd.read_csv('big.csv', chunksize=10000); dtype={'ID':'int32'}", language="python")
@@ -660,20 +679,20 @@ if uploaded_file:
         st.write("Use .astype('category') or pd.get_dummies for one-hot encoding.")
 
     with st.expander("🔹 Outlier detection (IQR)"):
-        st.code("iqr = q3 - q1; outliers = df[(df['Value'] < q1-1.5*iqr) | (df['Value'] > q3+1.5*iqr)]", language="python")
+        st.code("q1 = df['Value'].quantile(0.25)\nq3 = df['Value'].quantile(0.75)\niqr = q3 - q1\noutliers = df[(df['Value'] < q1-1.5*iqr) | (df['Value'] > q3+1.5*iqr)]", language="python")
         st.write("IQR method for simple outlier detection.")
 
     with st.expander("🔹 Correlation heatmap hint"):
         st.code("import seaborn as sns\nsns.heatmap(df.corr(), annot=True)", language="python")
-        st.write("Seaborn heatmap is useful in notebooks; Streamlit can show matplotlib figs.")
+        st.write("Seaborn heatmap is useful in notebooks; Streamlit can show matplotlib figures.")
 
     with st.expander("🔹 Data transformations (log/scaling/rank)"):
         st.code("df['log_salary'] = np.log1p(df['Salary'])", language="python")
         st.write("log1p handles zero values safely; ranking via df['rank'] = df['Score'].rank().")
 
     with st.expander("🔹 Window analytics (rolling std/mean)"):
-        st.code("df['rolling_avg'] = df['Value'].rolling(5).mean()", language="python")
-        st.write("Use rolling/ewm for time-series features.")
+        st.code("df['rolling_std'] = df['Value'].rolling(5).std()", language="python")
+        st.write("Use rolling/ewm for time-series features like moving averages and standard deviations.")
 
     with st.expander("🔹 DataFrame compare/debug"):
         st.code("df.compare(df2); df.equals(df2)", language="python")
@@ -685,11 +704,11 @@ if uploaded_file:
 
     with st.expander("🔹 Save/load with pickle for speed"):
         st.code("df.to_pickle('dataset.pkl'); pd.read_pickle('dataset.pkl')", language="python")
-        st.write("Pickle is fast for local workflows but not ideal for sharing.")
+        st.write("Pickle is fast for local workflows but not ideal for sharing across different Python versions.")
 
     with st.expander("🔹 Debugging tools & pipe"):
         st.code("df.pipe(lambda x: x.head())", language="python")
-        st.write("Use df.info(memory_usage='deep') and df.pipe() for chaining and debugging.")
+        st.write("Use df.info(memory_usage='deep') and df.pipe() for chaining operations and debugging.")
 
     # ----------------------------
     # 🧾 FINAL NOTES & FOOTER
