@@ -1,604 +1,867 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import io
 import matplotlib.pyplot as plt
-import seaborn as sns
-from io import BytesIO, StringIO
+from io import BytesIO
 
-# ========================================
-# CONFIGURATION
-# ========================================
-st.set_page_config(page_title="🎯 تمرين Pandas الشامل | Exercice Complet", layout="wide")
+# ----------------------------
+# 🏷️ APP CONFIGURATION
+# ----------------------------
+st.set_page_config(page_title="🐼 Pandas from 0 to Hero | Futuro School", layout="wide")
 
-# ========================================
-# HEADER
-# ========================================
-st.title("🎯 تمرين Pandas الشامل من A إلى Z")
-st.title("🎯 Exercice Complet Pandas de A à Z")
-st.markdown("### 🎓 مدرسة فيوتشر | Futuro School")
-st.markdown("**الأستاذة: حجار نايلة | Prof: Hadjar Nayla**")
+# ----------------------------
+# 🎓 HEADER & BRANDING
+# ----------------------------
+st.title("🐼 تعلم جميع وظائف Pandas — من الصفر إلى الاحتراف")
+st.title("🐼 Learn All Pandas Functions — From 0 to Hero")
+st.write("**English:** This app teaches Pandas step by step using your dataset. Upload a CSV file and explore every important function interactively!")
+st.markdown("### 🎓  Futuro School**")
+st.markdown("**تم التطوير بواسطة الأستاذة: حجار نايلة | Developed by Teacher: Hadjar Nayla**")
 st.markdown("---")
 
-# ========================================
-# INTRODUCTION
-# ========================================
-with st.expander("📖 مقدمة التمرين | Introduction", expanded=True):
-    st.markdown("""
-    ### 🎯 الهدف | Objectif
-    **العربية:** هذا تمرين شامل يغطي جميع عمليات Pandas من التحميل حتى التصدير.
-    
-    **Français:** Exercice complet couvrant toutes les opérations Pandas.
-    
-    ### 📋 ما ستتعلمه | Ce que vous allez apprendre:
-    1. ✅ تحميل واستكشاف البيانات
-    2. ✅ اكتشاف ومعالجة القيم المفقودة
-    3. ✅ تنظيف وتحويل البيانات
-    4. ✅ التصفية والاختيار المتقدم
-    5. ✅ التجميع والتحليل
-    6. ✅ التحليل الإحصائي
-    7. ✅ التصور البياني
-    8. ✅ التصدير والحفظ
-    
-    ### 📊 Datasets Recommandés:
-    - Titanic Dataset
-    - House Prices Dataset
-    - FIFA Players Dataset
-    - Sales Data
-    - COVID-19 Dataset
-    """)
+# ----------------------------
+# 📂 UPLOAD DATASET
+# ----------------------------
+st.header("📁 الخطوة 1: تحميل ملف CSV | Step 1: Upload a CSV file")
+uploaded_file = st.file_uploader("ارفع ملف CSV | Upload a CSV file", type=["csv"])
 
-st.markdown("---")
+# Helper functions
+def safe_head(df, n=5):
+    """عرض آمن لأول n صف | Safe display of first n rows"""
+    try:
+        return df.head(n)
+    except Exception:
+        return df.iloc[:n, :]
 
-# ========================================
-# UPLOAD FILE
-# ========================================
-st.header("📁 الجزء 1: تحميل البيانات | Partie 1: Chargement")
-
-uploaded_file = st.file_uploader(
-    "ارفع ملف CSV من Kaggle | Téléversez un fichier CSV",
-    type=['csv']
-)
+def df_to_excel_bytes(df):
+    """تحويل DataFrame إلى بايتات Excel | Convert DataFrame to Excel bytes"""
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    return buffer.getvalue()
 
 if uploaded_file:
     try:
         df = pd.read_csv(uploaded_file)
-        st.success("✅ تم تحميل البيانات بنجاح!")
-        
-        # ========================================
-        # EXERCICE 1: EXPLORATION
-        # ========================================
-        st.markdown("---")
-        st.header("🔍 التمرين 1: الاستكشاف الأولي | Exercice 1: Exploration")
-        
-        tab1, tab2, tab3 = st.tabs(["📊 النتائج", "💻 الكود", "📝 الملاحظات"])
-        
-        with tab1:
-            st.write("### 1️⃣ أول 10 صفوف | First 10 Rows")
-            st.dataframe(df.head(10), use_container_width=True)
-            
-            st.write("### 2️⃣ آخر 10 صفوف | Last 10 Rows")
-            st.dataframe(df.tail(10), use_container_width=True)
-            
-            st.write("### 3️⃣ الشكل | Shape")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("الصفوف | Rows", df.shape[0])
-            with col2:
-                st.metric("الأعمدة | Columns", df.shape[1])
-            with col3:
-                st.metric("الخلايا | Cells", df.shape[0] * df.shape[1])
-            
-            st.write("### 4️⃣ الأعمدة | Columns")
-            st.write(df.columns.tolist())
-            
-            st.write("### 5️⃣ أنواع البيانات | Data Types")
-            dtype_df = pd.DataFrame({
-                'العمود': df.dtypes.index,
-                'النوع': df.dtypes.values
-            })
-            st.dataframe(dtype_df, use_container_width=True)
-            
-            st.write("### 6️⃣ معلومات البيانات | Data Info")
-            buffer = StringIO()
-            df.info(buf=buffer)
-            st.text(buffer.getvalue())
-            
-            st.write("### 7️⃣ الملخص الإحصائي | Statistics")
-            st.dataframe(df.describe(include='all'), use_container_width=True)
-        
-        with tab2:
-            st.code("""
-import pandas as pd
-import numpy as np
+    except Exception:
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, encoding='utf-8', sep=None, engine='python')
+        except Exception as e:
+            st.error(f"فشل قراءة الملف | Failed to read CSV: {e}")
+            st.stop()
 
-# تحميل البيانات
-df = pd.read_csv('dataset.csv')
+    st.success("✅ تم تحميل البيانات بنجاح! | Dataset loaded successfully!")
+    st.dataframe(safe_head(df, 5))
 
-# الاستكشاف الأولي
-print(df.head(10))
-print(df.tail(10))
-print(df.shape)
-print(df.columns)
-print(df.dtypes)
-df.info()
-print(df.describe(include='all'))
-            """, language='python')
-        
-        with tab3:
-            st.markdown("""
-            ### 📝 ملاحظات مهمة
-            
-            - استخدم head() و tail() للتعرف السريع على البيانات
-            - shape يعطيك (عدد الصفوف، عدد الأعمدة)
-            - info() يعرض أنواع البيانات والقيم المفقودة
-            - describe() يعرض إحصائيات للأعمدة الرقمية
-            """)
-        
-        # ========================================
-        # EXERCICE 2: MISSING VALUES
-        # ========================================
-        st.markdown("---")
-        st.header("🔍 التمرين 2: اكتشاف المشاكل | Exercice 2: Détection")
-        
-        tab1, tab2, tab3 = st.tabs(["📊 النتائج", "💻 الكود", "📈 التصور"])
-        
-        with tab1:
-            st.write("### 1️⃣ القيم المفقودة | Missing Values")
-            missing = df.isnull().sum()
-            missing_percent = (missing / len(df)) * 100
-            missing_df = pd.DataFrame({
-                'العمود': missing.index,
-                'المفقودة': missing.values,
-                'النسبة': missing_percent.values.round(2)
-            })
-            missing_df = missing_df[missing_df['المفقودة'] > 0]
-            
-            if len(missing_df) > 0:
-                st.dataframe(missing_df, use_container_width=True)
-            else:
-                st.success("✅ لا توجد قيم مفقودة!")
-            
-            st.write("### 2️⃣ التكرارات | Duplicates")
-            duplicates = df.duplicated().sum()
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("عدد التكرارات", duplicates)
-            with col2:
-                st.metric("النسبة", f"{(duplicates/len(df)*100):.2f}%")
-        
-        with tab2:
-            st.code("""
-# حساب القيم المفقودة
-missing = df.isnull().sum()
-missing_percent = (missing / len(df)) * 100
-print(missing[missing > 0])
+    # ----------------------------
+    # 📘 SECTION 1: BASIC FUNCTIONS
+    # القسم 1: الوظائف الأساسية
+    # ----------------------------
+    st.markdown("---")
+    st.header("📘 القسم 1: الوظائف الأساسية | Section 1: Basic Functions")
+    st.write("**العربية:** تعلم الوظائف الأساسية للتعرف على البيانات")
+    st.write("**English:** Learn basic functions to explore your data")
 
-# اكتشاف التكرارات
-duplicates = df.duplicated().sum()
-print(f"Duplicate rows: {duplicates}")
+    with st.expander("1️⃣ df.head() — عرض الصفوف الأولى | View first rows"):
+        st.code("df.head()", language="python")
+        st.write("**العربية:** يعرض أول 5 صفوف من إطار البيانات")
+        st.write("**English:** Shows the first 5 rows of the DataFrame")
+        st.dataframe(safe_head(df, 5))
 
-# عرض الصفوف المكررة
-print(df[df.duplicated(keep=False)])
-            """, language='python')
-        
-        with tab3:
-            st.write("### 📊 تصور القيم المفقودة")
-            missing = df.isnull().sum()
-            missing_data = missing[missing > 0]
-            
-            if len(missing_data) > 0:
-                fig, ax = plt.subplots(figsize=(12, 6))
-                missing_data.plot(kind='bar', ax=ax, color='coral', edgecolor='black')
-                ax.set_title('القيم المفقودة حسب العمود', fontsize=14, fontweight='bold')
-                ax.set_ylabel('العدد')
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig)
-            else:
-                st.info("✅ لا توجد قيم مفقودة")
-        
-        # ========================================
-        # EXERCICE 3: CLEANING
-        # ========================================
-        st.markdown("---")
-        st.header("🧹 التمرين 3: تنظيف البيانات | Exercice 3: Nettoyage")
-        
-        df_clean = df.copy()
-        
-        tab1, tab2, tab3 = st.tabs(["📊 النتائج", "💻 الكود", "📈 المقارنة"])
-        
-        with tab1:
-            st.write("### 🔧 عملية التنظيف")
-            
-            # حذف الأعمدة بقيم مفقودة كثيرة
-            threshold = 0.5
-            missing_percent = df_clean.isnull().sum() / len(df_clean)
-            cols_to_drop = missing_percent[missing_percent > threshold].index.tolist()
-            if cols_to_drop:
-                st.warning(f"⚠️ الأعمدة المحذوفة: {cols_to_drop}")
-                df_clean = df_clean.drop(columns=cols_to_drop)
-            
-            # ملء القيم الرقمية
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
-            for col in numeric_cols:
-                if df_clean[col].isnull().sum() > 0:
-                    mean_val = df_clean[col].mean()
-                    df_clean[col].fillna(mean_val, inplace=True)
-                    st.success(f"✅ {col}: ملء بالمتوسط {mean_val:.2f}")
-            
-            # ملء القيم النصية
-            text_cols = df_clean.select_dtypes(include=['object']).columns
-            for col in text_cols:
-                if df_clean[col].isnull().sum() > 0:
-                    df_clean[col].fillna('Unknown', inplace=True)
-                    st.success(f"✅ {col}: ملء بـ Unknown")
-            
-            # حذف الصفوف المتبقية
-            before = len(df_clean)
-            df_clean = df_clean.dropna()
-            after = len(df_clean)
-            if before - after > 0:
-                st.warning(f"⚠️ صفوف محذوفة: {before - after}")
-            
-            st.write("### ✅ البيانات النظيفة")
-            st.dataframe(df_clean.head(10))
-        
-        with tab2:
-            st.code("""
-# إنشاء نسخة
-df_clean = df.copy()
+    with st.expander("2️⃣ df.tail() — عرض الصفوف الأخيرة | View last rows"):
+        st.code("df.tail()", language="python")
+        st.write("**العربية:** يعرض آخر 5 صفوف من إطار البيانات")
+        st.write("**English:** Shows the last 5 rows of the DataFrame")
+        st.dataframe(df.tail(5))
 
-# حذف الأعمدة بقيم مفقودة كثيرة
-threshold = 0.5
-missing_percent = df_clean.isnull().sum() / len(df_clean)
-cols_to_drop = missing_percent[missing_percent > threshold].index
-df_clean = df_clean.drop(columns=cols_to_drop)
+    with st.expander("3️⃣ df.shape — الحصول على عدد الصفوف والأعمدة | Get rows and columns count"):
+        st.code("df.shape", language="python")
+        st.write("**العربية:** يعيد (عدد الصفوف، عدد الأعمدة)")
+        st.write("**English:** Returns (number of rows, number of columns)")
+        st.write(f"الشكل | Shape: {df.shape}")
+        st.write(f"عدد الصفوف | Rows: {df.shape[0]}")
+        st.write(f"عدد الأعمدة | Columns: {df.shape[1]}")
 
-# ملء القيم الرقمية بالمتوسط
-numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
-for col in numeric_cols:
-    df_clean[col].fillna(df_clean[col].mean(), inplace=True)
+    with st.expander("4️⃣ df.columns — قائمة جميع الأعمدة | List all columns"):
+        st.code("df.columns", language="python")
+        st.write("**العربية:** يعرض أسماء جميع الأعمدة في مجموعة البيانات")
+        st.write("**English:** Displays the names of all columns in your dataset")
+        st.write(df.columns.tolist())
 
-# ملء القيم النصية
-text_cols = df_clean.select_dtypes(include=['object']).columns
-for col in text_cols:
-    df_clean[col].fillna('Unknown', inplace=True)
+    with st.expander("5️⃣ df.info() — معلومات عن أنواع البيانات | Data types information"):
+        st.code("df.info()", language="python")
+        st.write("**العربية:** ملخص عن الأعمدة وأنواع البيانات والقيم المفقودة")
+        st.write("**English:** Summary about columns, data types, and missing values")
+        buffer = io.StringIO()
+        df.info(buf=buffer)
+        st.text(buffer.getvalue())
 
-# حذف الصفوف المتبقية
-df_clean = df_clean.dropna()
-            """, language='python')
-        
-        with tab3:
-            st.write("### 📊 مقارنة قبل وبعد")
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("الصفوف", df_clean.shape[0], delta=df_clean.shape[0] - df.shape[0])
-            with col2:
-                st.metric("الأعمدة", df_clean.shape[1], delta=df_clean.shape[1] - df.shape[1])
-            with col3:
-                st.metric("قيم مفقودة", df_clean.isnull().sum().sum(), 
-                         delta=df_clean.isnull().sum().sum() - df.isnull().sum().sum())
-        
-        # ========================================
-        # EXERCICE 4: TRANSFORMATION
-        # ========================================
-        st.markdown("---")
-        st.header("🔄 التمرين 4: تحويل البيانات | Exercice 4: Transformation")
-        
-        tab1, tab2 = st.tabs(["📊 النتائج", "💻 الكود"])
-        
-        with tab1:
-            st.write("### 1️⃣ توحيد أسماء الأعمدة")
-            df_clean.columns = df_clean.columns.str.lower().str.replace(' ', '_')
-            st.success("✅ تم توحيد أسماء الأعمدة")
-            st.write(df_clean.columns.tolist())
-            
-            st.write("### 2️⃣ إنشاء أعمدة جديدة")
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            
-            if len(numeric_cols) >= 2:
-                col1_name = st.selectbox("العمود الأول:", numeric_cols)
-                col2_name = st.selectbox("العمود الثاني:", 
-                                        [c for c in numeric_cols if c != col1_name])
-                
-                if st.button("إنشاء عمود مجموع"):
-                    new_col = f"{col1_name}_plus_{col2_name}"
-                    df_clean[new_col] = df_clean[col1_name] + df_clean[col2_name]
-                    st.success(f"✅ تم إنشاء: {new_col}")
-                    st.dataframe(df_clean[[col1_name, col2_name, new_col]].head(10))
-            
-            st.dataframe(df_clean.head(10))
-        
-        with tab2:
-            st.code("""
-# توحيد أسماء الأعمدة
-df_clean.columns = df_clean.columns.str.lower().str.replace(' ', '_')
+    with st.expander("6️⃣ df.describe() — الملخص الإحصائي | Statistical summary"):
+        st.code("df.describe()", language="python")
+        st.write("**العربية:** إحصائيات للأعمدة الرقمية (المتوسط، الحد الأدنى، الحد الأقصى، إلخ)")
+        st.write("**English:** Statistics for numeric columns (mean, min, max, etc.)")
+        st.dataframe(df.describe(include='all'))
 
-# إنشاء عمود من عملية حسابية
-df_clean['total'] = df_clean['price'] * df_clean['quantity']
+    with st.expander("7️⃣ df.dtypes — أنواع البيانات لكل عمود | Data types of each column"):
+        st.code("df.dtypes", language="python")
+        st.write("**العربية:** يسرد نوع البيانات لكل عمود (int, float, object, إلخ)")
+        st.write("**English:** Lists the data type of each column (int, float, object, etc.)")
+        st.write(df.dtypes)
 
-# عمود شرطي
-df_clean['category'] = np.where(df_clean['age'] >= 18, 'Adult', 'Minor')
+    with st.expander("8️⃣ df.index — معلومات الفهرس | Index information"):
+        st.code("df.index", language="python")
+        st.write("**العربية:** يعطي معلومات عن فهرس الصفوف")
+        st.write("**English:** Gives information about the row index")
+        st.write(df.index)
 
-# تحويل أنواع البيانات
-df_clean['column'] = df_clean['column'].astype('category')
-            """, language='python')
-        
-        # ========================================
-        # EXERCICE 5: FILTERING
-        # ========================================
-        st.markdown("---")
-        st.header("🔍 التمرين 5: التصفية | Exercice 5: Filtrage")
-        
-        tab1, tab2 = st.tabs(["📊 النتائج", "💻 الكود"])
-        
-        with tab1:
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            
-            if len(numeric_cols) > 0:
-                st.write("### تصفية تفاعلية")
-                filter_col = st.selectbox("اختر العمود:", numeric_cols)
-                
-                min_val = float(df_clean[filter_col].min())
-                max_val = float(df_clean[filter_col].max())
-                
-                filter_range = st.slider(f"النطاق:", min_val, max_val, (min_val, max_val))
-                
-                filtered_df = df_clean[
-                    (df_clean[filter_col] >= filter_range[0]) & 
-                    (df_clean[filter_col] <= filter_range[1])
-                ]
-                
-                st.write(f"عدد النتائج: {len(filtered_df)} من {len(df_clean)}")
-                st.dataframe(filtered_df.head(20))
-        
-        with tab2:
-            st.code("""
-# تصفية بشرط واحد
-filtered = df_clean[df_clean['age'] > 30]
+    with st.expander("9️⃣ df.isnull() — كشف القيم المفقودة | Detect missing values"):
+        st.code("df.isnull().sum()", language="python")
+        st.write("**العربية:** يعرض عدد القيم المفقودة في كل عمود")
+        st.write("**English:** Shows count of missing values per column")
+        st.write(df.isnull().sum())
 
-# تصفية AND
-filtered_and = df_clean[(df_clean['age'] > 25) & (df_clean['salary'] > 50000)]
+    # ----------------------------
+    # 🧹 SECTION 2: DATA CLEANING
+    # القسم 2: تنظيف البيانات
+    # ----------------------------
+    st.markdown("---")
+    st.header("🧹 القسم 2: تنظيف البيانات | Section 2: Data Cleaning")
+    st.write("**العربية:** تعلم كيفية تنظيف وتحضير بياناتك")
+    st.write("**English:** Learn how to clean and prepare your data")
 
-# تصفية OR
-filtered_or = df_clean[(df_clean['city'] == 'Paris') | (df_clean['city'] == 'Lyon')]
+    with st.expander("🔟 df.dropna() — إزالة الصفوف المفقودة | Remove missing rows"):
+        st.code("df.dropna()", language="python")
+        st.write("**العربية:** يزيل جميع الصفوف التي تحتوي على قيم مفقودة")
+        st.write("**English:** Removes all rows containing missing values")
+        st.write(f"عدد الصفوف قبل الحذف | Rows before: {len(df)}")
+        st.write(f"عدد الصفوف بعد الحذف | Rows after: {len(df.dropna())}")
+        st.dataframe(safe_head(df.dropna(), 5))
 
-# استخدام isin()
-cities = ['Paris', 'Lyon']
-filtered_isin = df_clean[df_clean['city'].isin(cities)]
+    with st.expander("1️⃣1️⃣ df.fillna() — استبدال القيم المفقودة | Replace missing values"):
+        st.code("df.fillna(value)", language="python")
+        st.write("**العربية:** يستبدل القيم المفقودة بقيمة محددة")
+        st.write("**English:** Replaces missing values with a specified value")
+        fill_value = st.text_input("القيمة البديلة | Fill value (e.g., 0 or 'unknown'):", "0")
+        try:
+            fv = float(fill_value)
+        except:
+            fv = fill_value
+        st.dataframe(safe_head(df.fillna(fv), 5))
 
-# استخدام between()
-filtered_between = df_clean[df_clean['age'].between(25, 35)]
-            """, language='python')
-        
-        # ========================================
-        # EXERCICE 6: GROUPING
-        # ========================================
-        st.markdown("---")
-        st.header("📊 التمرين 6: التجميع | Exercice 6: Groupement")
-        
-        tab1, tab2 = st.tabs(["📊 النتائج", "💻 الكود"])
-        
-        with tab1:
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            text_cols = df_clean.select_dtypes(include=['object']).columns.tolist()
-            
-            if len(text_cols) > 0 and len(numeric_cols) > 0:
-                st.write("### التجميع")
-                group_col = st.selectbox("عمود التجميع:", text_cols)
-                agg_col = st.selectbox("عمود التجميع:", numeric_cols)
-                
-                grouped = df_clean.groupby(group_col)[agg_col].agg(['mean', 'sum', 'count'])
-                st.dataframe(grouped)
-                
-                fig, ax = plt.subplots(figsize=(12, 6))
-                grouped['mean'].plot(kind='bar', ax=ax, color='skyblue')
-                ax.set_title(f'متوسط {agg_col} حسب {group_col}')
-                plt.xticks(rotation=45, ha='right')
-                st.pyplot(fig)
-        
-        with tab2:
-            st.code("""
-# تجميع بسيط
-grouped = df_clean.groupby('category')['value'].mean()
+    with st.expander("1️⃣2️⃣ df.rename() — إعادة تسمية الأعمدة | Rename columns"):
+        st.code("df.rename(columns={'OldName':'NewName'})", language="python")
+        st.write("**العربية:** يعيد تسمية الأعمدة المحددة")
+        st.write("**English:** Renames specified columns")
+        col_old = st.selectbox("اختر عمود لإعادة التسمية | Select column to rename:", df.columns, key="rename_old")
+        col_new = st.text_input("الاسم الجديد | New name:", f"{col_old}_renamed", key="rename_new")
+        if st.button("إعادة التسمية | Rename"):
+            df_renamed = df.rename(columns={col_old: col_new})
+            st.success(f"✅ تم: {col_old} ← {col_new}")
+            st.write(df_renamed.columns.tolist())
 
-# تجميع بعدة دوال
-grouped_multi = df_clean.groupby('category')['value'].agg(['mean', 'sum', 'count'])
+    with st.expander("1️⃣3️⃣ df.drop() — حذف الأعمدة أو الصفوف | Remove columns or rows"):
+        st.code("df.drop('ColumnName', axis=1)", language="python")
+        st.write("**العربية:** يحذف الأعمدة أو الصفوف المحددة")
+        st.write("**English:** Removes specified columns or rows")
+        to_drop = st.multiselect("اختر أعمدة للحذف (معاينة فقط) | Select columns to drop (preview):", df.columns)
+        if to_drop:
+            st.dataframe(safe_head(df.drop(columns=to_drop), 5))
+        else:
+            st.write("لم يتم اختيار أعمدة | No columns selected")
 
-# جدول محوري
-pivot = pd.pivot_table(df_clean, values='value', index='category', 
-                       columns='region', aggfunc='mean')
+    with st.expander("1️⃣4️⃣ df.drop_duplicates() — إزالة التكرارات | Remove duplicates"):
+        st.code("df.drop_duplicates()", language="python")
+        st.write("**العربية:** يزيل الصفوف المكررة")
+        st.write("**English:** Removes duplicate rows")
+        st.write(f"عدد الصفوف المكررة | Duplicate rows: {int(df.duplicated().sum())}")
+        st.dataframe(safe_head(df.drop_duplicates(), 5))
 
-# value_counts
-value_counts = df_clean['category'].value_counts()
-            """, language='python')
-        
-        # ========================================
-        # EXERCICE 7: STATISTICS
-        # ========================================
-        st.markdown("---")
-        st.header("📈 التمرين 7: التحليل الإحصائي | Exercice 7: Statistiques")
-        
-        tab1, tab2, tab3 = st.tabs(["📊 النتائج", "💻 الكود", "📈 التصور"])
-        
-        with tab1:
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            
-            if len(numeric_cols) > 1:
-                st.write("### مصفوفة الارتباط")
-                corr_matrix = df_clean[numeric_cols].corr()
-                st.dataframe(corr_matrix.style.background_gradient(cmap='coolwarm'))
-            
-            if len(numeric_cols) > 0:
-                st.write("### اكتشاف القيم الشاذة")
-                outlier_col = st.selectbox("اختر عمود:", numeric_cols)
-                
-                Q1 = df_clean[outlier_col].quantile(0.25)
-                Q3 = df_clean[outlier_col].quantile(0.75)
-                IQR = Q3 - Q1
-                lower = Q1 - 1.5 * IQR
-                upper = Q3 + 1.5 * IQR
-                
-                outliers = df_clean[(df_clean[outlier_col] < lower) | 
-                                   (df_clean[outlier_col] > upper)]
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Q1", f"{Q1:.2f}")
-                with col2:
-                    st.metric("Q3", f"{Q3:.2f}")
-                with col3:
-                    st.metric("قيم شاذة", len(outliers))
-        
-        with tab2:
-            st.code("""
-# مصفوفة الارتباط
-corr = df_clean.corr()
+    # ----------------------------
+    # 🔍 SECTION 3: FILTERING & SELECTION
+    # القسم 3: التصفية والاختيار
+    # ----------------------------
+    st.markdown("---")
+    st.header("🔍 القسم 3: التصفية والاختيار | Section 3: Filtering & Selection")
+    st.write("**العربية:** تعلم كيفية اختيار وتصفية البيانات")
+    st.write("**English:** Learn how to select and filter data")
 
-# اكتشاف القيم الشاذة
-Q1 = df_clean['column'].quantile(0.25)
-Q3 = df_clean['column'].quantile(0.75)
-IQR = Q3 - Q1
-lower = Q1 - 1.5 * IQR
-upper = Q3 + 1.5 * IQR
-outliers = df_clean[(df_clean['column'] < lower) | (df_clean['column'] > upper)]
+    with st.expander("1️⃣5️⃣ df['column'] — اختيار عمود واحد | Select one column"):
+        st.code("df['ColumnName']", language="python")
+        st.write("**العربية:** يختار عمود واحد من البيانات")
+        st.write("**English:** Selects a single column from the data")
+        column = st.selectbox("اختر عمود | Select column:", df.columns, key="single_col")
+        st.dataframe(safe_head(df[[column]], 5))
 
-# إحصائيات
-mean = df_clean['column'].mean()
-median = df_clean['column'].median()
-std = df_clean['column'].std()
-            """, language='python')
-        
-        with tab3:
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            
-            if len(numeric_cols) > 1:
-                st.write("### خريطة الارتباط")
-                fig, ax = plt.subplots(figsize=(10, 8))
-                corr = df_clean[numeric_cols].corr()
-                sns.heatmap(corr, annot=True, cmap='coolwarm', center=0, ax=ax)
-                ax.set_title('مصفوفة الارتباط')
-                st.pyplot(fig)
-        
-        # ========================================
-        # EXERCICE 8: VISUALIZATION
-        # ========================================
-        st.markdown("---")
-        st.header("📊 التمرين 8: التصور | Exercice 8: Visualisation")
-        
-        tab1, tab2 = st.tabs(["📊 الرسوم", "💻 الكود"])
-        
-        with tab1:
-            numeric_cols = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-            
-            if len(numeric_cols) > 0:
-                st.write("### الهستوغرام")
-                hist_col = st.selectbox("اختر عمود:", numeric_cols, key="hist")
-                
-                fig, ax = plt.subplots(figsize=(12, 6))
-                df_clean[hist_col].hist(bins=30, ax=ax, color='skyblue', edgecolor='black')
-                ax.set_title(f'توزيع {hist_col}')
-                ax.set_xlabel(hist_col)
-                ax.set_ylabel('التكرار')
-                st.pyplot(fig)
-        
-        with tab2:
-            st.code("""
-import matplotlib.pyplot as plt
+    with st.expander("1️⃣6️⃣ df[['col1', 'col2']] — اختيار أعمدة متعددة | Select multiple columns"):
+        st.code("df[['Col1', 'Col2']]", language="python")
+        st.write("**العربية:** يختار عدة أعمدة في نفس الوقت")
+        st.write("**English:** Selects multiple columns at once")
+        cols = st.multiselect("اختر أعمدة | Choose columns:", df.columns, key="multi_cols")
+        if cols:
+            st.dataframe(safe_head(df[cols], 5))
+        else:
+            st.write("لم يتم اختيار أعمدة | No columns selected")
 
-# هستوغرام
-plt.figure(figsize=(12, 6))
-df_clean['column'].hist(bins=30)
-plt.title('Distribution')
-plt.show()
+    with st.expander("1️⃣7️⃣ df[condition] — تصفية الصفوف بشرط | Filter rows with condition"):
+        st.code("df[df['Goals'] > 10]", language="python")
+        st.write("**العربية:** يصفي الصفوف بناءً على شرط معين")
+        st.write("**English:** Filters rows based on a condition")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            cond_col = st.selectbox("العمود للتصفية | Column to filter:", numeric_cols, key="filter_col")
+            op = st.selectbox("المعامل | Operator:", [">", "<", ">=", "<=", "==", "!="], key="filter_op")
+            value = st.text_input("القيمة للمقارنة | Value to compare:", "0", key="filter_val")
+            try:
+                val = float(value)
+                if op == ">": out = df[df[cond_col] > val]
+                elif op == "<": out = df[df[cond_col] < val]
+                elif op == ">=": out = df[df[cond_col] >= val]
+                elif op == "<=": out = df[df[cond_col] <= val]
+                elif op == "==": out = df[df[cond_col] == val]
+                else: out = df[df[cond_col] != val]
+                st.write(f"عدد الصفوف المفلترة | Filtered rows: {len(out)}")
+                st.dataframe(safe_head(out, 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns available")
 
-# رسم شريطي
-df_clean.groupby('category')['value'].mean().plot(kind='bar')
-plt.show()
+    with st.expander("1️⃣8️⃣ df.iloc & df.loc — اختيار بالفهرس | Index-based selection"):
+        st.code("df.iloc[0:5, 0:3]  # by position\ndf.loc[0:5, ['Name','Club']]  # by label", language="python")
+        st.write("**العربية:** iloc للاختيار بالموضع، loc للاختيار بالتسمية")
+        st.write("**English:** iloc for position-based, loc for label-based selection")
+        rstart = st.number_input("بداية الصف | Row start:", min_value=0, max_value=max(0, len(df)-1), value=0, key="iloc_rs")
+        rend = st.number_input("نهاية الصف | Row end:", min_value=0, max_value=len(df), value=min(5, len(df)), key="iloc_re")
+        cstart = st.number_input("بداية العمود | Col start:", min_value=0, max_value=max(0, len(df.columns)-1), value=0, key="iloc_cs")
+        cend = st.number_input("نهاية العمود | Col end:", min_value=0, max_value=len(df.columns), value=min(3, len(df.columns)), key="iloc_ce")
+        try:
+            st.dataframe(df.iloc[int(rstart):int(rend), int(cstart):int(cend)])
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
 
-# scatter plot
-plt.scatter(df_clean['x'], df_clean['y'])
-plt.show()
-            """, language='python')
-        
-        # ========================================
-        # EXERCICE 9: EXPORT
-        # ========================================
-        st.markdown("---")
-        st.header("💾 التمرين 9: التصدير | Exercice 9: Export")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.write("#### CSV")
-            csv = df_clean.to_csv(index=False).encode('utf-8')
-            st.download_button("⬇️ تحميل CSV", csv, "data.csv", "text/csv")
-        
-        with col2:
-            st.write("#### Excel")
-            buffer = BytesIO()
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df_clean.to_excel(writer, index=False)
-            st.download_button("⬇️ تحميل Excel", buffer.getvalue(), "data.xlsx")
-        
-        with col3:
-            st.write("#### JSON")
-            json_str = df_clean.to_json(orient='records', indent=2)
-            st.download_button("⬇️ تحميل JSON", json_str, "data.json")
-        
-        # ========================================
-        # FINAL REPORT
-        # ========================================
-        st.markdown("---")
-        st.header("📋 التقرير النهائي | Rapport Final")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("#### البيانات الأصلية")
-            st.metric("الصفوف", df.shape[0])
-            st.metric("الأعمدة", df.shape[1])
-            st.metric("قيم مفقودة", df.isnull().sum().sum())
-        
-        with col2:
-            st.markdown("#### البيانات النظيفة")
-            st.metric("الصفوف", df_clean.shape[0], delta=df_clean.shape[0]-df.shape[0])
-            st.metric("الأعمدة", df_clean.shape[1], delta=df_clean.shape[1]-df.shape[1])
-            st.metric("قيم مفقودة", df_clean.isnull().sum().sum(), 
-                     delta=df_clean.isnull().sum().sum()-df.isnull().sum().sum())
-        
-        st.balloons()
-        
-        st.markdown("---")
-        st.markdown("## 🎉 تهانينا! أكملت التمرين الشامل")
-        st.markdown("### 🎓 مدرسة فيوتشر | Futuro School")
-        st.markdown("**الأستاذة: حجار نايلة**")
+    # ----------------------------
+    # 📈 SECTION 4: SORTING & GROUPING
+    # القسم 4: الترتيب والتجميع
+    # ----------------------------
+    st.markdown("---")
+    st.header("📈 القسم 4: الترتيب والتجميع | Section 4: Sorting & Grouping")
+    st.write("**العربية:** تعلم كيفية ترتيب وتجميع البيانات")
+    st.write("**English:** Learn how to sort and group data")
+
+    with st.expander("1️⃣9️⃣ df.sort_values() — الترتيب حسب عمود | Sort by column"):
+        st.code("df.sort_values(by='Goals', ascending=False)", language="python")
+        st.write("**العربية:** يرتب البيانات حسب عمود محدد (تصاعدي أو تنازلي)")
+        st.write("**English:** Sorts data by a specified column (ascending or descending)")
+        sort_col = st.selectbox("اختر عمود للترتيب | Select column to sort:", df.columns, key="sort_col")
+        asc = st.checkbox("تصاعدي؟ | Ascending?", value=False, key="sort_asc")
+        try:
+            st.dataframe(safe_head(df.sort_values(by=sort_col, ascending=asc), 10))
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣0️⃣ df.groupby() — التجميع والتلخيص | Group and aggregate"):
+        st.code("df.groupby('Club').mean()", language="python")
+        st.write("**العربية:** يجمع البيانات حسب فئة ويحسب إحصائيات")
+        st.write("**English:** Groups data by category and calculates statistics")
+        col_group = st.selectbox("اختر عمود للتجميع | Select grouping column:", df.columns, key="group_col")
+        try:
+            grouped = df.groupby(col_group).mean(numeric_only=True)
+            st.dataframe(safe_head(grouped, 10))
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣1️⃣ df.value_counts() — عد القيم الفريدة | Count unique values"):
+        st.code("df['ColumnName'].value_counts()", language="python")
+        st.write("**العربية:** يعد كم مرة ظهرت كل قيمة في العمود")
+        st.write("**English:** Counts how many times each value appears in the column")
+        col_val = st.selectbox("اختر عمود | Select column:", df.columns, key="value_counts")
+        try:
+            st.write(df[col_val].value_counts().head(20))
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    # ----------------------------
+    # 🧮 SECTION 5: ADVANCED OPERATIONS
+    # القسم 5: العمليات المتقدمة
+    # ----------------------------
+    st.markdown("---")
+    st.header("🧮 القسم 5: العمليات المتقدمة | Section 5: Advanced Operations")
+    st.write("**العربية:** وظائف متقدمة للتحليل الاحترافي")
+    st.write("**English:** Advanced functions for professional analysis")
+
+    with st.expander("2️⃣2️⃣ df.apply() — تطبيق دالة مخصصة | Apply custom function"):
+        st.code("df['Goals'].apply(lambda x: x * 2)", language="python")
+        st.write("**العربية:** يطبق دالة مخصصة على عمود معين")
+        st.write("**English:** Applies a custom function to a column")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            apply_col = st.selectbox("اختر عمود | Select column:", numeric_cols, key="apply_col")
+            if st.button("ضرب القيم × 2 | Multiply values × 2"):
+                try:
+                    df_copy = df.copy()
+                    df_copy[f"{apply_col}_x2"] = df_copy[apply_col].apply(lambda x: x * 2)
+                    st.dataframe(safe_head(df_copy[[apply_col, f"{apply_col}_x2"]], 10))
+                    st.success("✅ تم التطبيق | Applied successfully")
+                except Exception as e:
+                    st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    with st.expander("2️⃣3️⃣ pd.merge() — دمج مجموعتي بيانات | Merge two datasets"):
+        st.code("pd.merge(df1, df2, on='ID')", language="python")
+        st.write("**العربية:** يدمج مجموعتي بيانات بناءً على عمود مشترك")
+        st.write("**English:** Merges two datasets based on a common column")
+        uploaded_file2 = st.file_uploader("ارفع ملف CSV ثاني (اختياري) | Upload 2nd CSV (optional):", type=["csv"], key="merge2")
+        if uploaded_file2:
+            try:
+                df2 = pd.read_csv(uploaded_file2)
+                common = list(set(df.columns).intersection(df2.columns))
+                st.write(f"الأعمدة المشتركة | Common columns: {common}")
+                if common:
+                    merge_on = st.selectbox("عمود الدمج | Merge key:", common, key="merge_on")
+                    how = st.selectbox("نوع الدمج | Merge type:", ["inner", "left", "right", "outer"], key="merge_how")
+                    merged = pd.merge(df, df2, on=merge_on, how=how)
+                    st.write(f"عدد الصفوف بعد الدمج | Rows after merge: {len(merged)}")
+                    st.dataframe(safe_head(merged, 10))
+                else:
+                    st.write("لا توجد أعمدة مشتركة | No common columns")
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣4️⃣ pd.concat() — تكديس البيانات | Stack datasets"):
+        st.code("pd.concat([df1, df2])", language="python")
+        st.write("**العربية:** يكدس مجموعات البيانات رأسياً أو أفقياً")
+        st.write("**English:** Stacks datasets vertically or horizontally")
+        uploaded_file3 = st.file_uploader("ارفع ملف للتكديس (اختياري) | Upload CSV to concat (optional):", type=["csv"], key="concat2")
+        if uploaded_file3:
+            try:
+                df3 = pd.read_csv(uploaded_file3)
+                axis = st.radio("المحور | Axis:", (0, 1), format_func=lambda x: "عمودي (0) | Vertical" if x == 0 else "أفقي (1) | Horizontal", key="concat_axis")
+                conc = pd.concat([df, df3], axis=axis, ignore_index=(axis==0))
+                st.dataframe(safe_head(conc, 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣5️⃣ df.pivot_table() — جدول محوري | Pivot table"):
+        st.code("pd.pivot_table(df, values='Goals', index='Club', aggfunc='mean')", language="python")
+        st.write("**العربية:** ينشئ جدول ملخص بتجميع وإحصائيات")
+        st.write("**English:** Creates a summary table with grouping and statistics")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            val = st.selectbox("القيم (رقمية) | Values (numeric):", numeric_cols, key="pivot_val")
+            idx = st.selectbox("الفهرس | Index:", df.columns.tolist(), key="pivot_idx")
+            agg = st.selectbox("الدالة | Function:", ["mean", "sum", "count", "median"], key="pivot_agg")
+            try:
+                pt = pd.pivot_table(df, values=val, index=idx, aggfunc=agg)
+                st.dataframe(safe_head(pt, 20))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    # ----------------------------
+    # 📊 SECTION 6: STATISTICAL ANALYSIS
+    # القسم 6: التحليل الإحصائي
+    # ----------------------------
+    st.markdown("---")
+    st.header("📊 القسم 6: التحليل الإحصائي | Section 6: Statistical Analysis")
+    st.write("**العربية:** تحليل إحصائي وارتباطات")
+    st.write("**English:** Statistical analysis and correlations")
+
+    with st.expander("2️⃣6️⃣ df.corr() — مصفوفة الارتباط | Correlation matrix"):
+        st.code("df.corr()", language="python")
+        st.write("**العربية:** يحسب الارتباط بين الأعمدة الرقمية")
+        st.write("**English:** Calculates correlation between numeric columns")
+        try:
+            corr = df.corr(numeric_only=True)
+            st.dataframe(corr)
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣7️⃣ df.cov() — مصفوفة التغاير | Covariance matrix"):
+        st.code("df.cov()", language="python")
+        st.write("**العربية:** يحسب التغاير بين الأعمدة الرقمية")
+        st.write("**English:** Calculates covariance between numeric columns")
+        try:
+            cov = df.cov(numeric_only=True)
+            st.dataframe(cov)
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    with st.expander("2️⃣8️⃣ pd.crosstab() — جدول تقاطعي | Cross-tabulation"):
+        st.code("pd.crosstab(df['Gender'], df['Dept'])", language="python")
+        st.write("**العربية:** ينشئ جدول تقاطعي بين متغيرين")
+        st.write("**English:** Creates a cross-tabulation between two variables")
+        if len(df.columns) >= 2:
+            col_a = st.selectbox("الصفوف | Rows:", df.columns, key="ct_a")
+            col_b = st.selectbox("الأعمدة | Columns:", df.columns, key="ct_b")
+            try:
+                ct = pd.crosstab(df[col_a], df[col_b], margins=True)
+                st.dataframe(ct)
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    # ----------------------------
+    # 🔄 SECTION 7: DATA TRANSFORMATION
+    # القسم 7: تحويل البيانات
+    # ----------------------------
+    st.markdown("---")
+    st.header("🔄 القسم 7: تحويل البيانات | Section 7: Data Transformation")
+    st.write("**العربية:** تحويل وإعادة تشكيل البيانات")
+    st.write("**English:** Transform and reshape data")
+
+    with st.expander("2️⃣9️⃣ df.rolling() — النوافذ المتحركة | Rolling windows"):
+        st.code("df['Value'].rolling(window=3).mean()", language="python")
+        st.write("**العربية:** يحسب المتوسط المتحرك أو إحصائيات على نافذة متحركة")
+        st.write("**English:** Calculates moving average or statistics over a rolling window")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            win_col = st.selectbox("اختر عمود | Select column:", numeric_cols, key="rolling_col")
+            window = st.number_input("حجم النافذة | Window size:", min_value=1, max_value=100, value=3, key="rolling_window")
+            try:
+                df_copy = df.copy()
+                df_copy[f"{win_col}_rolling"] = df_copy[win_col].rolling(window=int(window)).mean()
+                st.dataframe(safe_head(df_copy[[win_col, f"{win_col}_rolling"]], 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    with st.expander("3️⃣0️⃣ df.ewm() — المتوسط المتحرك الأسي | Exponential moving average"):
+        st.code("df['Value'].ewm(span=5).mean()", language="python")
+        st.write("**العربية:** يحسب المتوسط المتحرك الأسي (يعطي وزن أكبر للقيم الحديثة)")
+        st.write("**English:** Calculates exponential moving average (gives more weight to recent values)")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            ewm_col = st.selectbox("اختر عمود | Select column:", numeric_cols, key="ewm_col")
+            span = st.number_input("المدى | Span:", min_value=1, max_value=100, value=5, key="ewm_span")
+            try:
+                df_copy = df.copy()
+                df_copy[f"{ewm_col}_ewm"] = df_copy[ewm_col].ewm(span=int(span), adjust=False).mean()
+                st.dataframe(safe_head(df_copy[[ewm_col, f"{ewm_col}_ewm"]], 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    # ----------------------------
+    # ✍️ SECTION 8: STRING OPERATIONS
+    # القسم 8: عمليات النصوص
+    # ----------------------------
+    st.markdown("---")
+    st.header("✍️ القسم 8: عمليات النصوص | Section 8: String Operations")
+    st.write("**العربية:** معالجة وتحويل النصوص")
+    st.write("**English:** Text processing and transformation")
+
+    with st.expander("3️⃣1️⃣ str.lower() & str.upper() — تحويل الأحرف | Case conversion"):
+        st.code("df['Name'].str.lower()\ndf['Name'].str.upper()", language="python")
+        st.write("**العربية:** يحول النص إلى أحرف صغيرة أو كبيرة")
+        st.write("**English:** Converts text to lowercase or uppercase")
+        text_cols = [c for c in df.columns if pd.api.types.is_object_dtype(df[c])]
+        if text_cols:
+            text_col = st.selectbox("اختر عمود نصي | Select text column:", text_cols, key="text_col")
+            op = st.selectbox("العملية | Operation:", ["lower", "upper", "title", "strip"], key="text_op")
+            if op == "lower":
+                st.dataframe(safe_head(df[text_col].str.lower(), 10))
+            elif op == "upper":
+                st.dataframe(safe_head(df[text_col].str.upper(), 10))
+            elif op == "title":
+                st.dataframe(safe_head(df[text_col].str.title(), 10))
+            elif op == "strip":
+                st.dataframe(safe_head(df[text_col].str.strip(), 10))
+        else:
+            st.write("لا توجد أعمدة نصية | No text columns")
+
+    with st.expander("3️⃣2️⃣ str.contains() — البحث في النصوص | Search in text"):
+        st.code("df['Name'].str.contains('Ahmed')", language="python")
+        st.write("**العربية:** يبحث عن نص معين داخل العمود")
+        st.write("**English:** Searches for specific text within the column")
+        text_cols = [c for c in df.columns if pd.api.types.is_object_dtype(df[c])]
+        if text_cols:
+            text_col = st.selectbox("اختر عمود | Select column:", text_cols, key="contains_col")
+            pattern = st.text_input("النص للبحث | Text to search:", "", key="contains_pat")
+            if pattern:
+                try:
+                    result = df[text_col].str.contains(pattern, na=False)
+                    st.write(f"عدد الصفوف المطابقة | Matching rows: {result.sum()}")
+                    st.dataframe(safe_head(df[result], 10))
+                except Exception as e:
+                    st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة نصية | No text columns")
+
+    with st.expander("3️⃣3️⃣ str.split() — تقسيم النصوص | Split text"):
+        st.code("df['Name'].str.split(' ')", language="python")
+        st.write("**العربية:** يقسم النص إلى أجزاء بناءً على فاصل")
+        st.write("**English:** Splits text into parts based on a separator")
+        text_cols = [c for c in df.columns if pd.api.types.is_object_dtype(df[c])]
+        if text_cols:
+            text_col = st.selectbox("اختر عمود | Select column:", text_cols, key="split_col")
+            sep = st.text_input("الفاصل | Separator:", " ", key="split_sep")
+            try:
+                st.dataframe(safe_head(df[text_col].str.split(sep).astype(str), 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة نصية | No text columns")
+
+    # ----------------------------
+    # 🕓 SECTION 9: TIME SERIES
+    # القسم 9: السلاسل الزمنية
+    # ----------------------------
+    st.markdown("---")
+    st.header("🕓 القسم 9: السلاسل الزمنية | Section 9: Time Series")
+    st.write("**العربية:** العمل مع البيانات الزمنية")
+    st.write("**English:** Working with time-based data")
+
+    with st.expander("3️⃣4️⃣ pd.to_datetime() — تحويل إلى تاريخ | Convert to datetime"):
+        st.code("pd.to_datetime(df['Date'])", language="python")
+        st.write("**العربية:** يحول النص إلى صيغة تاريخ ووقت")
+        st.write("**English:** Converts text to datetime format")
+        date_col = st.selectbox("اختر عمود للتحويل | Select column to convert:", ["<none>"] + df.columns.tolist(), key="date_col")
+        if date_col != "<none>":
+            try:
+                df_copy = df.copy()
+                df_copy[date_col] = pd.to_datetime(df_copy[date_col], errors='coerce')
+                st.dataframe(safe_head(df_copy[[date_col]], 10))
+                st.success("✅ تم التحويل | Converted successfully")
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("3️⃣5️⃣ df.resample() — إعادة العينة الزمنية | Time resampling"):
+        st.code("df.resample('M').mean()", language="python")
+        st.write("**العربية:** يعيد تجميع البيانات الزمنية (شهرياً، أسبوعياً، إلخ)")
+        st.write("**English:** Regroups time-based data (monthly, weekly, etc.)")
+        st.write("💡 يتطلب فهرس زمني | Requires datetime index")
+
+    # ----------------------------
+    # ⚙️ SECTION 10: INDEX OPERATIONS
+    # القسم 10: عمليات الفهرس
+    # ----------------------------
+    st.markdown("---")
+    st.header("⚙️ القسم 10: عمليات الفهرس | Section 10: Index Operations")
+    st.write("**العربية:** التحكم في فهرس البيانات")
+    st.write("**English:** Control data index")
+
+    with st.expander("3️⃣6️⃣ df.set_index() — تعيين الفهرس | Set index"):
+        st.code("df.set_index('ID')", language="python")
+        st.write("**العربية:** يجعل عمود معين هو فهرس البيانات")
+        st.write("**English:** Makes a specific column the data index")
+        index_col = st.selectbox("اختر عمود للفهرس | Select index column:", ["<none>"] + df.columns.tolist(), key="set_index")
+        if index_col != "<none>":
+            try:
+                df_indexed = df.set_index(index_col)
+                st.dataframe(safe_head(df_indexed, 5))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("3️⃣7️⃣ df.reset_index() — إعادة تعيين الفهرس | Reset index"):
+        st.code("df.reset_index()", language="python")
+        st.write("**العربية:** يعيد الفهرس إلى الأرقام الافتراضية")
+        st.write("**English:** Resets index to default numbers")
+        st.dataframe(safe_head(df.reset_index(drop=True), 5))
+
+    # ----------------------------
+    # 🔁 SECTION 11: CONDITIONAL OPERATIONS
+    # القسم 11: العمليات الشرطية
+    # ----------------------------
+    st.markdown("---")
+    st.header("🔁 القسم 11: العمليات الشرطية | Section 11: Conditional Operations")
+    st.write("**العربية:** إنشاء أعمدة بناءً على شروط")
+    st.write("**English:** Create columns based on conditions")
+
+    with st.expander("3️⃣8️⃣ np.where() — الشرط الثنائي | Binary condition"):
+        st.code("np.where(df['Age'] > 18, 'Adult', 'Minor')", language="python")
+        st.write("**العربية:** ينشئ قيم بناءً على شرط (إذا/وإلا)")
+        st.write("**English:** Creates values based on condition (if/else)")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            cond_col = st.selectbox("اختر عمود | Select column:", numeric_cols, key="cond_col")
+            threshold = st.number_input("القيمة الحدية | Threshold:", value=0.0, key="cond_val")
+            new_col = st.text_input("اسم العمود الجديد | New column name:", f"{cond_col}_flag", key="cond_newname")
+            if st.button("إنشاء العمود | Create column"):
+                try:
+                    df_copy = df.copy()
+                    df_copy[new_col] = np.where(df_copy[cond_col] > threshold, "نعم | Yes", "لا | No")
+                    st.dataframe(safe_head(df_copy[[cond_col, new_col]], 10))
+                except Exception as e:
+                    st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    # ----------------------------
+    # 🧩 SECTION 12: MULTIINDEX
+    # القسم 12: الفهرس الهرمي
+    # ----------------------------
+    st.markdown("---")
+    st.header("🧩 القسم 12: الفهرس الهرمي | Section 12: MultiIndex")
+    st.write("**العربية:** العمل مع فهرس متعدد المستويات")
+    st.write("**English:** Working with hierarchical index")
+
+    with st.expander("3️⃣9️⃣ MultiIndex — الفهرس متعدد المستويات | Hierarchical indexing"):
+        st.code("df.set_index(['Region', 'Year'])", language="python")
+        st.write("**العربية:** ينشئ فهرس بمستويين أو أكثر")
+        st.write("**English:** Creates an index with two or more levels")
+        if len(df.columns) >= 2:
+            mi_cols = st.multiselect("اختر عمودين | Choose 2 columns:", df.columns, max_selections=2, key="mi_cols")
+            if len(mi_cols) == 2:
+                try:
+                    df_mi = df.set_index(mi_cols)
+                    st.dataframe(safe_head(df_mi, 10))
+                except Exception as e:
+                    st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("غير كافي | Not enough columns")
+
+    # ----------------------------
+    # 📈 SECTION 13: VISUALIZATION
+    # القسم 13: الرسوم البيانية
+    # ----------------------------
+    st.markdown("---")
+    st.header("📈 القسم 13: الرسوم البيانية | Section 13: Visualization")
+    st.write("**العربية:** تصور البيانات برسوم بيانية")
+    st.write("**English:** Visualize data with charts")
+
+    with st.expander("4️⃣0️⃣ رسم الهستوغرام | Histogram plot"):
+        st.code("df['Column'].hist()", language="python")
+        st.write("**العربية:** يرسم توزيع القيم في عمود")
+        st.write("**English:** Plots the distribution of values in a column")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            viz_col = st.selectbox("اختر عمود للرسم | Select column to plot:", numeric_cols, key="viz_col")
+            if st.button("إظهار الرسم | Show plot"):
+                try:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    df[viz_col].dropna().hist(ax=ax, bins=20, color='skyblue', edgecolor='black')
+                    ax.set_title(f"توزيع | Distribution: {viz_col}", fontsize=14, fontweight='bold')
+                    ax.set_xlabel(viz_col, fontsize=12)
+                    ax.set_ylabel("التكرار | Frequency", fontsize=12)
+                    ax.grid(alpha=0.3)
+                    st.pyplot(fig)
+                except Exception as e:
+                    st.error(f"خطأ | Error: {e}")
+        else:
+            st.write("لا توجد أعمدة رقمية | No numeric columns")
+
+    # ----------------------------
+    # 🧰 SECTION 14: PERFORMANCE
+    # القسم 14: الأداء والتحسين
+    # ----------------------------
+    st.markdown("---")
+    st.header("🧰 القسم 14: الأداء والتحسين | Section 14: Performance & Optimization")
+    st.write("**العربية:** تحسين استهلاك الذاكرة والسرعة")
+    st.write("**English:** Optimize memory usage and speed")
+
+    with st.expander("4️⃣1️⃣ df.memory_usage() — استهلاك الذاكرة | Memory usage"):
+        st.code("df.memory_usage(deep=True)", language="python")
+        st.write("**العربية:** يعرض استهلاك الذاكرة لكل عمود")
+        st.write("**English:** Shows memory usage for each column")
+        try:
+            mem = df.memory_usage(deep=True)
+            mem_mb = mem / 1024 / 1024
+            st.write(mem_mb)
+            st.write(f"الاستهلاك الكلي | Total: {mem_mb.sum():.2f} MB")
+        except Exception as e:
+            st.error(f"خطأ | Error: {e}")
+
+    with st.expander("4️⃣2️⃣ astype('category') — تحسين نوع البيانات | Optimize data type"):
+        st.code("df['Gender'].astype('category')", language="python")
+        st.write("**العربية:** يحول الأعمدة النصية المتكررة إلى نوع category لتوفير الذاكرة")
+        st.write("**English:** Converts repetitive text columns to category type to save memory")
+        if st.button("تطبيق التحسين | Apply optimization"):
+            try:
+                df_opt = df.copy()
+                for c in df_opt.columns:
+                    if df_opt[c].dtype == object and df_opt[c].nunique() < len(df_opt) * 0.5:
+                        df_opt[c] = df_opt[c].astype('category')
+                st.write("أنواع البيانات بعد التحسين | Data types after optimization:")
+                st.write(df_opt.dtypes)
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    # ----------------------------
+    # 💾 SECTION 15: EXPORT DATA
+    # القسم 15: تصدير البيانات
+    # ----------------------------
+    st.markdown("---")
+    st.header("💾 القسم 15: تصدير البيانات | Section 15: Export Data")
+    st.write("**العربية:** احفظ بياناتك بصيغ مختلفة")
+    st.write("**English:** Save your data in different formats")
+
+    with st.expander("4️⃣3️⃣ تصدير إلى CSV | Export to CSV"):
+        st.code("df.to_csv('output.csv', index=False)", language="python")
+        st.write("**العربية:** يحفظ البيانات كملف CSV")
+        st.write("**English:** Saves data as CSV file")
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="⬇️ تحميل CSV | Download CSV",
+            data=csv,
+            file_name="data_export.csv",
+            mime="text/csv"
+        )
+
+    with st.expander("4️⃣4️⃣ تصدير إلى Excel | Export to Excel"):
+        st.code("df.to_excel('output.xlsx', index=False)", language="python")
+        st.write("**العربية:** يحفظ البيانات كملف Excel")
+        st.write("**English:** Saves data as Excel file")
+        xlsx_bytes = df_to_excel_bytes(df)
+        st.download_button(
+            label="⬇️ تحميل Excel | Download Excel",
+            data=xlsx_bytes,
+            file_name="data_export.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    with st.expander("4️⃣5️⃣ تصدير إلى JSON | Export to JSON"):
+        st.code("df.to_json('output.json')", language="python")
+        st.write("**العربية:** يحفظ البيانات كملف JSON")
+        st.write("**English:** Saves data as JSON file")
+        json_str = df.to_json(orient='records', force_ascii=False, indent=2)
+        st.download_button(
+            label="⬇️ تحميل JSON | Download JSON",
+            data=json_str,
+            file_name="data_export.json",
+            mime="application/json"
+        )
+
+    # ----------------------------
+    # ⚡ SECTION 16: EXPERT TIPS
+    # القسم 16: نصائح الخبراء
+    # ----------------------------
+    st.markdown("---")
+    st.header("⚡ القسم 16: نصائح الخبراء | Section 16: Expert Tips")
+    st.write("**العربية:** تقنيات متقدمة للمحترفين")
+    st.write("**English:** Advanced techniques for professionals")
+
+    with st.expander("4️⃣6️⃣ قراءة الملفات الكبيرة | Reading large files"):
+        st.code("pd.read_csv('big.csv', chunksize=10000)", language="python")
+        st.write("**العربية:** استخدم chunksize لقراءة الملفات الكبيرة تدريجياً")
+        st.write("**English:** Use chunksize to read large files incrementally")
+
+    with st.expander("4️⃣7️⃣ pd.get_dummies() — الترميز الثنائي | One-hot encoding"):
+        st.code("pd.get_dummies(df, columns=['Gender'])", language="python")
+        st.write("**العربية:** يحول الأعمدة الفئوية إلى أعمدة ثنائية (0 و 1)")
+        st.write("**English:** Converts categorical columns to binary columns (0 and 1)")
+        cat_cols = [c for c in df.columns if df[c].nunique() < 10 and pd.api.types.is_object_dtype(df[c])]
+        if cat_cols and st.button("تطبيق الترميز | Apply encoding"):
+            try:
+                df_encoded = pd.get_dummies(df, columns=cat_cols[:1])
+                st.dataframe(safe_head(df_encoded, 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("4️⃣8️⃣ اكتشاف القيم الشاذة | Outlier detection"):
+        st.code("q1 = df['Value'].quantile(0.25)\nq3 = df['Value'].quantile(0.75)\niqr = q3 - q1", language="python")
+        st.write("**العربية:** استخدم طريقة IQR لاكتشاف القيم الشاذة")
+        st.write("**English:** Use IQR method to detect outliers")
+        numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if numeric_cols:
+            outlier_col = st.selectbox("اختر عمود | Select column:", numeric_cols, key="outlier_col")
+            try:
+                q1 = df[outlier_col].quantile(0.25)
+                q3 = df[outlier_col].quantile(0.75)
+                iqr = q3 - q1
+                lower = q1 - 1.5 * iqr
+                upper = q3 + 1.5 * iqr
+                outliers = df[(df[outlier_col] < lower) | (df[outlier_col] > upper)]
+                st.write(f"عدد القيم الشاذة | Outliers count: {len(outliers)}")
+                if len(outliers) > 0:
+                    st.dataframe(safe_head(outliers, 10))
+            except Exception as e:
+                st.error(f"خطأ | Error: {e}")
+
+    with st.expander("4️⃣9️⃣ df.sample() — اختيار عشوائي | Random sampling"):
+        st.code("df.sample(n=10)", language="python")
+        st.write("**العربية:** يختار صفوف عشوائية من البيانات")
+        st.write("**English:** Selects random rows from the data")
+        n_samples = st.number_input("عدد الصفوف | Number of rows:", min_value=1, max_value=len(df), value=min(10, len(df)), key="sample_n")
+        if st.button("اختيار عشوائي | Random sample"):
+            st.dataframe(df.sample(n=int(n_samples)))
+
+    with st.expander("5️⃣0️⃣ df.pipe() — ربط العمليات | Chain operations"):
+        st.code("df.pipe(lambda x: x.dropna()).pipe(lambda x: x.fillna(0))", language="python")
+        st.write("**العربية:** يسمح بربط عمليات متعددة بشكل متسلسل")
+        st.write("**English:** Allows chaining multiple operations sequentially")
+        st.write("💡 مفيد لكتابة كود نظيف ومنظم | Useful for writing clean, organized code")
+
+    # ----------------------------
+    # 🎓 FINAL FOOTER
+    # الختام
+    # ----------------------------
+    st.markdown("---")
+    st.markdown("## 🎉 تهانينا! لقد أكملت جميع وظائف Pandas")
+    st.markdown("## 🎉 Congratulations! You've completed all Pandas functions")
+    st.markdown("---")
+    st.markdown("### 🎓 مدرسة فيوتشر - التميز في تعليم علوم البيانات")
+    st.markdown("### 🎓 Futuro School - Excellence in Data Science Education")
+    st.markdown("**تم التطوير بواسطة الأستاذة: حجار نايلة**")
+    st.markdown("**Developed by Teacher: Hadjar Nayla**")
+    st.markdown("*تمكين الطلاب بمهارات تحليل البيانات العملية*")
+    st.markdown("*Empowering students with practical data analysis skills*")
     
-    except Exception as e:
-        st.error(f"خطأ: {str(e)}")
+    # Quick reference
+    st.markdown("---")
+    with st.expander("📚 مرجع سريع | Quick Reference"):
+        st.markdown("""
+        ### الوظائف الأساسية | Basic Functions
+        - `df.head()` - أول 5 صفوف | First 5 rows
+        - `df.tail()` - آخر 5 صفوف | Last 5 rows
+        - `df.shape` - الأبعاد | Dimensions
+        - `df.info()` - معلومات البيانات | Data info
+        - `df.describe()` - إحصائيات | Statistics
+        
+        ### التنظيف | Cleaning
+        - `df.dropna()` - حذف القيم المفقودة | Drop missing
+        - `df.fillna()` - ملء القيم المفقودة | Fill missing
+        - `df.drop_duplicates()` - حذف التكرارات | Remove duplicates
+        
+        ### الاختيار | Selection
+        - `df['col']` - اختيار عمود | Select column
+        - `df[['col1', 'col2']]` - أعمدة متعددة | Multiple columns
+        - `df[df['col'] > 10]` - التصفية | Filtering
+        
+        ### التحليل | Analysis
+        - `df.groupby()` - التجميع | Grouping
+        - `df.sort_values()` - الترتيب | Sorting
+        - `df.corr()` - الارتباط | Correlation
+        
+        ### التصدير | Export
+        - `df.to_csv()` - حفظ CSV | Save CSV
+        - `df.to_excel()` - حفظ Excel | Save Excel
+        - `df.to_json()` - حفظ JSON | Save JSON
+        """)
 
 else:
-    st.info("👆 قم برفع ملف CSV لبدء التمرين")
+    # Welcome screen when no file is uploaded
+    st.info("👆 يرجى تحميل ملف CSV لبدء التعلم | Please upload a CSV file to start learning")
     
-    st.markdown("### 🎯 الأهداف التعليمية")
+    st.markdown("---")
+    st.markdown("## 📚 ماذا ستتعلم؟ | What will you learn?")
+    st.markdown("## 🌟 ستتعلم 50 وظيفة في Pandas مقسمة على 16 قسم")
+    st.markdown("## 🌟 You will learn 50 Pandas functions across 16 sections")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **ستتعلم:**
-        - ✅ تحميل ومعاينة البيانات
-        - ✅ اكتشاف المشاكل
-        - ✅ تنظيف البيانات
-        - ✅ التحويل والتحليل
-        - ✅ التصور والتصدير
+        ### الأقسام بالعربية:
+        1. 📘 الوظائف الأساسية
+        2. 🧹 تنظيف البيانات
+        3. 🔍 التصفية والاختيار
+        4. 📈 الترتيب والتجميع
+        5. 🧮 العمليات المتقدمة
+        6. 📊 التحليل الإحصائي
+        7. 🔄 تحويل البيانات
+        8. ✍️ عمليات النصوص
+        9. 🕓 السلاسل الزمنية
+        10. ⚙️ عمليات الفهرس
+        11. 🔁 العمليات الشرطية
+        12. 🧩 الفهرس الهرمي
+        13. 📈 الرسوم البيانية
+        14. 🧰 الأداء والتحسين
+        15. 💾 تصدير البيانات
+        16. ⚡ نصائح الخبراء
         """)
-    
-    with col2:
-        st.markdown("""
-        **Datasets مقترحة:**
-        - 🚢 Titanic
-        - 🏠 House Prices
-        - ⚽ FIFA Players
-        - 🛒 Sales Data
-        """)
+
