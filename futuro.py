@@ -15,9 +15,8 @@ st.set_page_config(page_title="🐼 Pandas from 0 to Hero | Futuro School", layo
 # ----------------------------
 st.title("🐼 تعلم جميع وظائف Pandas — من الصفر إلى الاحتراف")
 st.title("🐼 Learn All Pandas Functions — From 0 to Hero")
-st.write("**العربية:** هذا التطبيق يعلم Pandas خطوة بخطوة باستخدام بياناتك الخاصة. قم بتحميل ملف CSV واستكشف كل وظيفة مهمة بشكل تفاعلي!")
 st.write("**English:** This app teaches Pandas step by step using your dataset. Upload a CSV file and explore every important function interactively!")
-st.markdown("### 🎓 **مدرسة فيوتشر | Futuro School**")
+st.markdown("### 🎓  Futuro School**")
 st.markdown("**تم التطوير بواسطة الأستاذة: حجار نايلة | Developed by Teacher: Hadjar Nayla**")
 st.markdown("---")
 
@@ -865,3 +864,4 @@ else:
         15. 💾 تصدير البيانات
         16. ⚡ نصائح الخبراء
         """)
+
