@@ -794,8 +794,6 @@ if uploaded_file:
     st.markdown("## 🎉 تهانينا! لقد أكملت جميع وظائف Pandas")
     st.markdown("## 🎉 Congratulations! You've completed all Pandas functions")
     st.markdown("---")
-    st.markdown("### 🎓 مدرسة فيوتشر - التميز في تعليم علوم البيانات")
-    st.markdown("### 🎓 Futuro School - Excellence in Data Science Education")
     st.markdown("**تم التطوير بواسطة الأستاذة: حجار نايلة**")
     st.markdown("**Developed by Teacher: Hadjar Nayla**")
     st.markdown("*تمكين الطلاب بمهارات تحليل البيانات العملية*")
@@ -864,4 +862,5 @@ else:
         15. 💾 تصدير البيانات
         16. ⚡ نصائح الخبراء
         """)
+
 
