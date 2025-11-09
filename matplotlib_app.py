@@ -501,4 +501,510 @@ plt.plot(x, y1)
 plt.subplot(1, 2, 2)
 plt.plot(x, y2)
 plt.tight_layout()  # Prevents overlapping
-plt.show
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يضبط المسافات تلقائياً لمنع التداخل")
+    st.write("**English:** Automatically adjusts spacing to prevent overlap")
+    
+    if st.button("إظهار | Show", key="18"):
+        fig = plt.figure(figsize=(12, 5))
+        
+        ax1 = plt.subplot(1, 2, 1)
+        ax1.plot(df.index, df['Sales'], marker='o', linewidth=2)
+        ax1.set_title('Without tight_layout', fontsize=12)
+        ax1.set_xlabel('Very Long X Label That Might Overlap')
+        
+        ax2 = plt.subplot(1, 2, 2)
+        ax2.plot(df.index, df['Profit'], marker='s', linewidth=2, color='green')
+        ax2.set_title('With tight_layout', fontsize=12)
+        ax2.set_xlabel('Very Long X Label That Fits Well')
+        
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
+
+# ----------------------------
+# 📈 SECTION 6: ADVANCED PLOTS
+# ----------------------------
+st.markdown("---")
+st.header("📈 القسم 6: رسوم متقدمة | Section 6: Advanced Plots")
+st.write("**العربية:** رسوم بيانية متقدمة واحترافية")
+st.write("**English:** Advanced and professional plots")
+
+with st.expander("1️⃣9️⃣ Multiple Lines — خطوط متعددة"):
+    st.code("""
+plt.plot(x, y1, label='Line 1')
+plt.plot(x, y2, label='Line 2')
+plt.plot(x, y3, label='Line 3')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** رسم عدة خطوط في نفس الرسم")
+    st.write("**English:** Plot multiple lines in the same chart")
+    
+    if st.button("إظهار | Show", key="19"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Sales'], marker='o', linewidth=2, color='#E63946', label='Sales')
+        ax.plot(df.index, df['Profit'], marker='s', linewidth=2, color='#06A77D', label='Profit')
+        ax.plot(df.index, df['Expenses'], marker='^', linewidth=2, color='#457B9D', label='Expenses')
+        ax.plot(df.index, df['Growth']*20, marker='D', linewidth=2, color='#F4A261', label='Growth x20')
+        ax.set_title('Multi-line Comparison | مقارنة متعددة الخطوط', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        ax.legend(loc='upper left')
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣0️⃣ ax.twinx() — محوران عموديان | Dual Y-axes"):
+    st.code("""
+fig, ax1 = plt.subplots()
+ax1.plot(x, y1, color='blue')
+ax2 = ax1.twinx()
+ax2.plot(x, y2, color='red')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** إنشاء محورين Y لرسم بيانات بمقاييس مختلفة")
+    st.write("**English:** Create two Y-axes to plot data with different scales")
+    
+    if st.button("إظهار | Show", key="20"):
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+        
+        ax1.bar(df['Month'], df['Sales'], color='#FF6B6B', alpha=0.7, label='Sales')
+        ax1.set_xlabel('Month', fontsize=12)
+        ax1.set_ylabel('Sales', fontsize=12, color='#FF6B6B')
+        ax1.tick_params(axis='y', labelcolor='#FF6B6B')
+        ax1.tick_params(axis='x', rotation=45)
+        
+        ax2 = ax1.twinx()
+        ax2.plot(df['Month'], df['Growth'], color='#06A77D', marker='o', linewidth=3, label='Growth %')
+        ax2.set_ylabel('Growth %', fontsize=12, color='#06A77D')
+        ax2.tick_params(axis='y', labelcolor='#06A77D')
+        
+        ax1.set_title('Dual Axis Plot | رسم بمحورين', fontsize=16, fontweight='bold')
+        ax1.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣1️⃣ Grouped Bar Chart — أعمدة مجمعة | Grouped bars"):
+    st.code("""
+x = np.arange(len(categories))
+width = 0.35
+plt.bar(x - width/2, values1, width, label='Group 1')
+plt.bar(x + width/2, values2, width, label='Group 2')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** رسم أعمدة مجمعة للمقارنة")
+    st.write("**English:** Plot grouped bars for comparison")
+    
+    if st.button("إظهار | Show", key="21"):
+        fig, ax = plt.subplots(figsize=(12, 6))
+        x = np.arange(len(df))
+        width = 0.25
+        
+        ax.bar(x - width, df['Sales'], width, label='Sales', color='#E63946')
+        ax.bar(x, df['Profit'], width, label='Profit', color='#06A77D')
+        ax.bar(x + width, df['Expenses'], width, label='Expenses', color='#457B9D')
+        
+        ax.set_title('Grouped Bar Chart | رسم أعمدة مجمعة', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Month', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        ax.set_xticks(x)
+        ax.set_xticklabels(df['Month'], rotation=45)
+        ax.legend()
+        ax.grid(axis='y', alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣2️⃣ Stacked Bar Chart — أعمدة مكدسة | Stacked bars"):
+    st.code("""
+plt.bar(x, values1, label='Part 1')
+plt.bar(x, values2, bottom=values1, label='Part 2')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** رسم أعمدة مكدسة فوق بعضها")
+    st.write("**English:** Plot stacked bars on top of each other")
+    
+    if st.button("إظهار | Show", key="22"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        ax.bar(df['Month'], df['Profit'], label='Profit', color='#06A77D', alpha=0.8)
+        ax.bar(df['Month'], df['Expenses'], bottom=df['Profit'], 
+               label='Expenses', color='#E63946', alpha=0.8)
+        
+        ax.set_title('Stacked Bar Chart | رسم أعمدة مكدسة', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Month', fontsize=12)
+        ax.set_ylabel('Total Value', fontsize=12)
+        ax.legend()
+        ax.tick_params(axis='x', rotation=45)
+        ax.grid(axis='y', alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+# ----------------------------
+# 🎯 SECTION 7: ANNOTATIONS & TEXT
+# ----------------------------
+st.markdown("---")
+st.header("🎯 القسم 7: التعليقات والنصوص | Section 7: Annotations & Text")
+st.write("**العربية:** إضافة نصوص وتعليقات للرسوم")
+st.write("**English:** Add text and annotations to plots")
+
+with st.expander("2️⃣3️⃣ plt.text() — إضافة نص | Add text"):
+    st.code("""
+plt.plot(x, y)
+plt.text(x_pos, y_pos, 'Text here', fontsize=12)
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يضيف نص في موقع محدد")
+    st.write("**English:** Adds text at a specific location")
+    
+    if st.button("إظهار | Show", key="23"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Sales'], marker='o', linewidth=2, color='#2E86AB')
+        
+        max_idx = df['Sales'].idxmax()
+        max_val = df['Sales'].max()
+        ax.text(max_idx, max_val + 20, f'Peak: {max_val}', 
+                fontsize=12, ha='center', color='red', fontweight='bold')
+        
+        ax.set_title('Plot with Text | رسم مع نص', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Sales', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣4️⃣ plt.annotate() — سهم تعليق | Annotation arrow"):
+    st.code("""
+plt.annotate('Important point', xy=(x, y), 
+             xytext=(x+1, y+10),
+             arrowprops=dict(arrowstyle='->'))
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يضيف تعليق مع سهم يشير إلى نقطة")
+    st.write("**English:** Adds annotation with arrow pointing to a point")
+    
+    if st.button("إظهار | Show", key="24"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Profit'], marker='o', linewidth=2, color='#06A77D')
+        
+        max_idx = df['Profit'].idxmax()
+        max_val = df['Profit'].max()
+        ax.annotate(f'Maximum\n{max_val}', 
+                   xy=(max_idx, max_val), 
+                   xytext=(max_idx-2, max_val+40),
+                   fontsize=12, fontweight='bold',
+                   arrowprops=dict(arrowstyle='->', color='red', lw=2),
+                   bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.7))
+        
+        ax.set_title('Annotation Example | مثال على التعليق', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Profit', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣5️⃣ plt.axhline() & plt.axvline() — خطوط مرجعية | Reference lines"):
+    st.code("""
+plt.plot(x, y)
+plt.axhline(y=50, color='r', linestyle='--', label='Threshold')
+plt.axvline(x=5, color='g', linestyle=':', label='Target')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يضيف خطوط أفقية وعمودية مرجعية")
+    st.write("**English:** Adds horizontal and vertical reference lines")
+    
+    if st.button("إظهار | Show", key="25"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Sales'], marker='o', linewidth=2, color='#2E86AB', label='Sales')
+        
+        avg_sales = df['Sales'].mean()
+        ax.axhline(y=avg_sales, color='red', linestyle='--', linewidth=2, label=f'Average: {avg_sales:.0f}')
+        ax.axvline(x=5, color='green', linestyle=':', linewidth=2, label='Mid Point')
+        
+        ax.set_title('Reference Lines | الخطوط المرجعية', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Sales', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣6️⃣ plt.axhspan() & plt.axvspan() — مناطق ملونة | Colored regions"):
+    st.code("""
+plt.plot(x, y)
+plt.axhspan(ymin, ymax, alpha=0.3, color='red')
+plt.axvspan(xmin, xmax, alpha=0.3, color='blue')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يلون مناطق معينة في الرسم")
+    st.write("**English:** Colors specific regions in the plot")
+    
+    if st.button("إظهار | Show", key="26"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Profit'], marker='o', linewidth=2, color='#2E86AB', label='Profit')
+        
+        # Highlight profitable region
+        ax.axhspan(150, df['Profit'].max()+50, alpha=0.2, color='green', label='High Profit Zone')
+        ax.axhspan(0, 100, alpha=0.2, color='red', label='Low Profit Zone')
+        ax.axvspan(4, 7, alpha=0.1, color='yellow', label='Peak Season')
+        
+        ax.set_title('Highlighted Regions | المناطق المميزة', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Profit', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+# ----------------------------
+# 🌈 SECTION 8: COLORS & COLORMAPS
+# ----------------------------
+st.markdown("---")
+st.header("🌈 القسم 8: الألوان والخرائط اللونية | Section 8: Colors & Colormaps")
+st.write("**العربية:** العمل مع الألوان والخرائط اللونية")
+st.write("**English:** Working with colors and colormaps")
+
+with st.expander("2️⃣7️⃣ Colormaps — خرائط لونية | Color gradients"):
+    st.code("""
+plt.scatter(x, y, c=values, cmap='viridis')
+plt.colorbar()
+plt.show()
+    """, language="python")
+    st.write("**العربية:** استخدام خرائط لونية متدرجة")
+    st.write("**English:** Using color gradient maps")
+    
+    cmap_choice = st.selectbox("اختر خريطة لونية | Choose colormap:", 
+                               ['viridis', 'plasma', 'inferno', 'magma', 'coolwarm', 'rainbow', 'jet'])
+    
+    if st.button("إظهار | Show", key="27"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        scatter = ax.scatter(df['Sales'], df['Profit'], s=df['Expenses']*2, 
+                           c=df['Growth'], cmap=cmap_choice, alpha=0.7, edgecolors='black', linewidth=1.5)
+        ax.set_title(f'Colormap: {cmap_choice} | خريطة لونية', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Sales', fontsize=12)
+        ax.set_ylabel('Profit', fontsize=12)
+        cbar = plt.colorbar(scatter, ax=ax)
+        cbar.set_label('Growth %', fontsize=11)
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣8️⃣ Color Names — أسماء الألوان | Named colors"):
+    st.code("""
+plt.plot(x, y1, color='crimson')
+plt.plot(x, y2, color='dodgerblue')
+plt.plot(x, y3, color='forestgreen')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** استخدام أسماء الألوان المعرفة")
+    st.write("**English:** Using predefined color names")
+    
+    if st.button("إظهار | Show", key="28"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Sales'], color='crimson', linewidth=2, marker='o', label='Sales')
+        ax.plot(df.index, df['Profit'], color='dodgerblue', linewidth=2, marker='s', label='Profit')
+        ax.plot(df.index, df['Expenses'], color='forestgreen', linewidth=2, marker='^', label='Expenses')
+        ax.plot(df.index, df['Growth']*20, color='gold', linewidth=2, marker='D', label='Growth x20')
+        ax.set_title('Named Colors | ألوان مسماة', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("2️⃣9️⃣ Hex Colors — ألوان سداسية عشرية | Hex colors"):
+    st.code("""
+plt.plot(x, y, color='#FF6B6B')  # Hex color code
+plt.show()
+    """, language="python")
+    st.write("**العربية:** استخدام رموز الألوان السداسية عشرية")
+    st.write("**English:** Using hexadecimal color codes")
+    
+    if st.button("إظهار | Show", key="29"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        colors_hex = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8']
+        
+        for i, col in enumerate(df.columns[1:5]):
+            ax.plot(df.index, df[col], color=colors_hex[i], 
+                   linewidth=2, marker='o', label=col)
+        
+        ax.set_title('Hex Colors | ألوان Hex', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+# ----------------------------
+# 📊 SECTION 9: SPECIAL PLOTS
+# ----------------------------
+st.markdown("---")
+st.header("📊 القسم 9: رسوم خاصة | Section 9: Special Plots")
+st.write("**العربية:** رسوم بيانية متخصصة")
+st.write("**English:** Specialized plots")
+
+with st.expander("3️⃣0️⃣ plt.errorbar() — أعمدة الخطأ | Error bars"):
+    st.code("""
+plt.errorbar(x, y, yerr=errors, fmt='o')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يضيف أعمدة تمثل هامش الخطأ")
+    st.write("**English:** Adds bars representing error margins")
+    
+    if st.button("إظهار | Show", key="30"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        errors = df['Sales'] * 0.1  # 10% error
+        ax.errorbar(df.index, df['Sales'], yerr=errors, fmt='o', 
+                   linewidth=2, markersize=8, capsize=5, capthick=2,
+                   color='#2E86AB', ecolor='#E63946', label='Sales ± 10%')
+        ax.set_title('Error Bars | أعمدة الخطأ', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Sales', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("3️⃣1️⃣ plt.stem() — رسم عصوي | Stem plot"):
+    st.code("""
+plt.stem(x, y)
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يرسم خطوط عمودية من المحور إلى النقاط")
+    st.write("**English:** Draws vertical lines from axis to points")
+    
+    if st.button("إظهار | Show", key="31"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        markerline, stemlines, baseline = ax.stem(df.index, df['Growth'], 
+                                                   linefmt='#2E86AB', markerfmt='o',
+                                                   basefmt='k-')
+        markerline.set_markerfacecolor('#E63946')
+        markerline.set_markersize(10)
+        stemlines.set_linewidth(2)
+        ax.set_title('Stem Plot | رسم عصوي', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Growth %', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("3️⃣2️⃣ plt.step() — رسم درجي | Step plot"):
+    st.code("""
+plt.step(x, y, where='mid')
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يرسم خطاً درجياً (سلمياً)")
+    st.write("**English:** Draws a step-like (staircase) line")
+    
+    if st.button("إظهار | Show", key="32"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.step(df.index, df['Sales'], where='mid', linewidth=2, color='#2E86AB', label='Sales')
+        ax.step(df.index, df['Profit'], where='mid', linewidth=2, color='#06A77D', label='Profit')
+        ax.set_title('Step Plot | رسم درجي', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Value', fontsize=12)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        st.pyplot(fig)
+        plt.close()
+
+with st.expander("3️⃣3️⃣ Heatmap — خريطة حرارية | Heat map"):
+    st.code("""
+plt.imshow(data, cmap='hot', aspect='auto')
+plt.colorbar()
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يعرض البيانات كخريطة حرارية ملونة")
+    st.write("**English:** Displays data as a colored heat map")
+    
+    if st.button("إظهار | Show", key="33"):
+        fig, ax = plt.subplots(figsize=(10, 8))
+        # Create correlation matrix
+        data_matrix = df[['Sales', 'Profit', 'Expenses', 'Growth']].T.values
+        im = ax.imshow(data_matrix, cmap='RdYlGn', aspect='auto')
+        
+        ax.set_xticks(np.arange(len(df)))
+        ax.set_yticks(np.arange(len(['Sales', 'Profit', 'Expenses', 'Growth'])))
+        ax.set_xticklabels(df['Month'], rotation=45)
+        ax.set_yticklabels(['Sales', 'Profit', 'Expenses', 'Growth'])
+        
+        plt.colorbar(im, ax=ax, label='Value')
+        ax.set_title('Heatmap | خريطة حرارية', fontsize=16, fontweight='bold')
+        st.pyplot(fig)
+        plt.close()
+
+# ----------------------------
+# 🎭 SECTION 10: STYLES & THEMES
+# ----------------------------
+st.markdown("---")
+st.header("🎭 القسم 10: الأنماط والثيمات | Section 10: Styles & Themes")
+st.write("**العربية:** تطبيق أنماط جاهزة على الرسوم")
+st.write("**English:** Apply pre-made styles to plots")
+
+with st.expander("3️⃣4️⃣ plt.style.use() — تطبيق نمط | Apply style"):
+    st.code("""
+plt.style.use('ggplot')
+plt.plot(x, y)
+plt.show()
+    """, language="python")
+    st.write("**العربية:** يطبق نمط تصميم جاهز")
+    st.write("**English:** Applies a pre-made design style")
+    
+    style_choice = st.selectbox("اختر نمط | Choose style:", 
+                               ['default', 'ggplot', 'seaborn', 'bmh', 'fivethirtyeight', 'dark_background'])
+    
+    if st.button("إظهار | Show", key="34"):
+        with plt.style.context(style_choice):
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(df.index, df['Sales'], marker='o', linewidth=2, label='Sales')
+            ax.plot(df.index, df['Profit'], marker='s', linewidth=2, label='Profit')
+            ax.set_title(f'Style: {style_choice} | نمط', fontsize=16, fontweight='bold')
+            ax.set_xlabel('Index', fontsize=12)
+            ax.set_ylabel('Value', fontsize=12)
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            st.pyplot(fig)
+            plt.close()
+
+# ----------------------------
+# 🔧 SECTION 11: FIGURE & AXES PROPERTIES
+# ----------------------------
+st.markdown("---")
+st.header("🔧 القسم 11: خصائص الشكل والمحاور | Section 11: Figure & Axes Properties")
+st.write("**العربية:** التحكم في خصائص الشكل والمحاور")
+st.write("**English:** Control figure and axes properties")
+
+with st.expander("3️⃣5️⃣ fig.savefig() — حفظ الرسم | Save figure"):
+    st.code("""
+fig, ax = plt.subplots()
+ax.plot(x, y)
+fig.savefig('myplot.png', dpi=300, bbox_inches='tight')
+    """, language="python")
+    st.write("**العربية:** يحفظ الرسم كملف صورة")
+    st.write("**English:** Saves the plot as an image file")
+    
+    if st.button("إنشاء وتنزيل | Create & Download", key="35"):
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df.index, df['Sales'], marker='o', linewidth=2, color='#2E86AB')
+        ax.set_title('Sales Chart | رسم المبيعات', fontsize=16, fontweight='bold')
+        ax.set_xlabel('Index', fontsize=12)
+        ax.set_ylabel('Sales', fontsize=12)
+        ax.grid(True, alpha=0.3)
+        
+        # Save to buffer
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+        buf.seek(0)
+        
+        st.pyplot(fig)
+        st.download_button(
+            label="⬇️ تحميل الصورة | Download PNG",
+            data=buf,
+            file_name="matplotlib_chart.png",
+            mime="image/png"
+        )
+        plt.close()
+
+with st.expander("3️
