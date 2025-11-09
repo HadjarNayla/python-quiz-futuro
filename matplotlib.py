@@ -22,6 +22,9 @@ st.markdown("### 🎓 Futuro School")
 st.markdown("**تم التطوير بواسطة الأستاذة: حجار نايلة | Developed by Teacher: Hadjar Nayla**")
 st.markdown("---")
 
+# Important note about filename
+st.warning("⚠️ **مهم جداً | VERY IMPORTANT:** عند حفظ هذا الملف، لا تسميه `matplotlib.py` - استخدم اسم مثل `matplotlib_app.py` أو `viz_app.py` | When saving this file, do NOT name it `matplotlib.py` - use a name like `matplotlib_app.py` or `viz_app.py`")
+
 # ----------------------------
 # 📂 OPTIONAL: UPLOAD DATASET
 # ----------------------------
@@ -77,6 +80,7 @@ plt.show()
         ax.set_ylabel('المبيعات | Sales', fontsize=12)
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("2️⃣ plt.scatter() — رسم نقطي | Scatter plot"):
     st.code("""
@@ -100,6 +104,7 @@ plt.show()
         plt.colorbar(scatter, ax=ax, label='الفهرس | Index')
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("3️⃣ plt.bar() — رسم أعمدة | Bar chart"):
     st.code("""
@@ -118,6 +123,7 @@ plt.show()
         ax.tick_params(axis='x', rotation=45)
         ax.grid(axis='y', alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("4️⃣ plt.barh() — أعمدة أفقية | Horizontal bar chart"):
     st.code("""
@@ -135,6 +141,7 @@ plt.show()
         ax.set_ylabel('الشهر | Month', fontsize=12)
         ax.grid(axis='x', alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 # ----------------------------
 # 📊 SECTION 2: STATISTICAL PLOTS
@@ -162,6 +169,7 @@ plt.show()
         ax.set_ylabel('التكرار | Frequency', fontsize=12)
         ax.grid(axis='y', alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("6️⃣ plt.boxplot() — رسم صندوقي | Box plot"):
     st.code("""
@@ -182,6 +190,7 @@ plt.show()
         ax.set_ylabel('القيمة | Value', fontsize=12)
         ax.grid(axis='y', alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("7️⃣ plt.violinplot() — رسم كمانة | Violin plot"):
     st.code("""
@@ -204,6 +213,7 @@ plt.show()
         ax.set_ylabel('القيمة | Value', fontsize=12)
         ax.grid(axis='y', alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 # ----------------------------
 # 🥧 SECTION 3: PIE & AREA CHARTS
@@ -230,6 +240,7 @@ plt.show()
                colors=colors, explode=explode, shadow=True, startangle=90)
         ax.set_title('توزيع المبيعات | Sales Distribution', fontsize=16, fontweight='bold')
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("9️⃣ plt.fill_between() — ملء المساحة | Fill area"):
     st.code("""
@@ -257,6 +268,7 @@ plt.show()
         ax.legend()
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("🔟 plt.stackplot() — مساحات مكدسة | Stacked area"):
     st.code("""
@@ -277,6 +289,7 @@ plt.show()
         ax.legend(loc='upper left')
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 # ----------------------------
 # 🎨 SECTION 4: CUSTOMIZATION
@@ -312,6 +325,7 @@ plt.show()
         ax.set_ylabel('المبيعات | Sales', fontsize=12)
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("1️⃣2️⃣ plt.title() — العنوان | Title"):
     st.code("""
@@ -332,6 +346,7 @@ plt.show()
         ax.set_ylabel('الأرباح | Profit', fontsize=12)
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("1️⃣3️⃣ plt.xlabel() & plt.ylabel() — تسميات المحاور | Axis labels"):
     st.code("""
@@ -353,6 +368,7 @@ plt.show()
         ax.set_ylabel(ylabel, fontsize=12)
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("1️⃣4️⃣ plt.legend() — وسيلة الإيضاح | Legend"):
     st.code("""
@@ -375,6 +391,7 @@ plt.show()
         ax.legend(loc='best', fontsize=10)
         ax.grid(True, alpha=0.3)
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("1️⃣5️⃣ plt.grid() — الشبكة | Grid"):
     st.code("""
@@ -396,6 +413,7 @@ plt.show()
         ax.grid(True, linestyle=grid_style, alpha=grid_alpha)
         ax.tick_params(axis='x', rotation=45)
         st.pyplot(fig)
+        plt.close()
 
 # ----------------------------
 # 📐 SECTION 5: SUBPLOTS & LAYOUTS
@@ -446,6 +464,7 @@ plt.show()
         
         plt.tight_layout()
         st.pyplot(fig)
+        plt.close()
 
 with st.expander("1️⃣7️⃣ plt.subplots() — إنشاء محاور متعددة | Create multiple axes"):
     st.code("""
@@ -467,13 +486,4 @@ plt.show()
         ax1.set_xlabel('الفهرس | Index', fontsize=11)
         ax1.set_ylabel('القيمة | Value', fontsize=11)
         ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # Right plot
-        x_pos = np.arange(len(df))
-        width = 0.35
-        ax2.bar(x_pos - width/2, df['Sales'], width, label='المبيعات|Sales', color='#457B9D')
-        ax2.bar(x_pos + width/2, df['Expenses'], width, label='المصروفات|Expenses', color='#F1FAEE')
-        ax2.set_title('مقارنة المبيعات والمصروفات | Sales vs Expenses', fontsize=14, fontweight='bold')
-        ax2.set_xlabel('الشهر | Month', fontsize=11)
-        ax2.set_
+        ax1.grid(True, alpha=0.
