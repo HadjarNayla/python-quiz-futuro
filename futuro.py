@@ -1,11 +1,4 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
-import io
-import matplotlib.pyplot as plt
-from io import BytesIO
-import streamlit as st
-import time
 
 # Page configuration
 st.set_page_config(
@@ -22,784 +15,288 @@ st.markdown("""
         color: #2E86AB;
         font-size: 3em;
         font-weight: bold;
-        margin-bottom: 0;
-    }
-    .sub-header {
-        text-align: center;
-        color: #A23B72;
-        font-size: 1.2em;
-        margin-top: 0;
     }
     .instructor {
         text-align: center;
         color: #F18F01;
-        font-size: 1.1em;
+        font-size: 1.2em;
         margin-bottom: 2em;
     }
-    .lesson-box {
-        background-color: #f0f8ff;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #2E86AB;
-        margin: 10px 0;
-    }
     .code-output {
-        background-color: #f5f5f5;
-        padding: 10px;
+        background-color: #e8f5e9;
+        padding: 15px;
         border-radius: 5px;
-        border-left: 3px solid #4CAF50;
         margin: 10px 0;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<p class="main-header">🐍 Learn Python from Zero</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Futuro Skills Academy</p>', unsafe_allow_html=True)
-st.markdown('<p class="instructor">Instructor: Hadjar Naila</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-header">🐍 Learn Python</p>', unsafe_allow_html=True)
+st.markdown('<p class="instructor">by Hadjar Naila | Futuro Skills Academy</p>', unsafe_allow_html=True)
 
-# Sidebar navigation
-st.sidebar.title("📚 Course Navigation")
-st.sidebar.markdown("---")
-
+# Sidebar
+st.sidebar.title("📚 Lessons")
 lessons = [
-    "🏠 Welcome",
-    "1️⃣ What is Python?",
-    "2️⃣ Your First Program",
-    "3️⃣ Variables & Data Types",
-    "4️⃣ Basic Operations",
-    "5️⃣ Strings",
-    "6️⃣ Lists",
-    "7️⃣ Conditional Statements",
-    "8️⃣ Loops",
-    "9️⃣ Functions",
-    "🔟 Practice Projects"
+    "🏠 Start Here",
+    "1️⃣ First Program",
+    "2️⃣ Variables",
+    "3️⃣ Math",
+    "4️⃣ Text",
+    "5️⃣ Lists",
+    "6️⃣ If/Else",
+    "7️⃣ Loops",
+    "8️⃣ Functions",
+    "🎮 Projects"
 ]
 
-selected_lesson = st.sidebar.radio("Choose a Lesson:", lessons)
-
-# Progress tracker
-progress = st.sidebar.progress(0)
-completed = st.sidebar.number_input("Lessons Completed:", 0, len(lessons)-1, 0)
-progress.progress(completed / (len(lessons)-1))
-
+selected = st.sidebar.radio("", lessons)
 st.sidebar.markdown("---")
-st.sidebar.info("💡 Tip: Try running all code examples in your own Python environment!")
+st.sidebar.info("💡 Try the code yourself!")
 
-# Main content area
-if selected_lesson == "🏠 Welcome":
+# Lessons
+if selected == "🏠 Start Here":
     st.balloons()
-    col1, col2 = st.columns([2, 1])
     
+    col1, col2 = st.columns([2, 1])
     with col1:
         st.markdown("""
-        ### Welcome to Python Programming! 🎉
+        ### Welcome! 👋
         
-        This interactive course will take you from absolute beginner to confident Python programmer.
+        **You'll learn:**
+        - Python basics
+        - Write real code
+        - Build projects
         
-        **What you'll learn:**
-        - Python fundamentals and syntax
-        - Working with different data types
-        - Control flow and logic
-        - Functions and code organization
-        - Real-world programming projects
+        **No experience needed!**
         
-        **Course Structure:**
-        - 10 comprehensive lessons
-        - Interactive code examples
-        - Practice exercises
-        - Real projects to build
-        
-        **Prerequisites:**
-        - No programming experience required!
-        - Just enthusiasm to learn
-        
-        **Get Started:**
-        Use the sidebar to navigate through lessons. Start with Lesson 1!
+        👈 Start with Lesson 1
         """)
     
     with col2:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg", width=200)
-        st.success("👨‍🏫 Your instructor: **Hadjar Naila**")
-        st.info("🎓 **Futuro Skills Academy** - Empowering the next generation of developers")
+        st.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg", width=150)
 
-elif selected_lesson == "1️⃣ What is Python?":
-    st.header("Lesson 1: What is Python?")
+elif selected == "1️⃣ First Program":
+    st.header("Your First Program")
     
-    st.markdown("""
-    ### Introduction to Python 🐍
+    st.code('print("Hello, World!")', language="python")
+    st.markdown('<div class="code-output">Hello, World!</div>', unsafe_allow_html=True)
     
-    Python is a **high-level**, **interpreted** programming language known for its simplicity and readability.
-    
-    **Why Python?**
-    - Easy to learn and read
-    - Versatile (web, data science, AI, automation, games)
-    - Huge community and libraries
-    - High demand in job market
-    
-    **What can you build with Python?**
-    - Websites and web applications
-    - Data analysis and visualization
-    - Machine learning and AI
-    - Automation scripts
-    - Games and desktop applications
-    """)
-    
-    st.markdown('<div class="lesson-box">', unsafe_allow_html=True)
-    st.markdown("""
-    **🎯 Key Concept:** Python uses indentation (spaces/tabs) to define code blocks, making it very readable!
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    with st.expander("📖 Quick Quiz"):
-        answer = st.radio("Which of these is NOT a use case for Python?", 
-                         ["Web Development", "Operating System Kernel", "Data Science", "Automation"])
-        if st.button("Check Answer"):
-            if answer == "Operating System Kernel":
-                st.success("✅ Correct! While Python can interact with OS, kernels are typically written in C.")
-            else:
-                st.error("❌ Try again!")
+    st.markdown("### Try it! ✏️")
+    msg = st.text_input("Your message:", "Hello, Python!")
+    if st.button("▶ Run"):
+        st.markdown(f'<div class="code-output">{msg}</div>', unsafe_allow_html=True)
 
-elif selected_lesson == "2️⃣ Your First Program":
-    st.header("Lesson 2: Your First Python Program")
+elif selected == "2️⃣ Variables":
+    st.header("Variables")
     
-    st.markdown("""
-    ### The Classic "Hello, World!" 👋
+    st.markdown("Variables store data:")
     
-    Every programmer's journey starts here. Let's write our first Python program!
-    """)
-    
-    st.code("""
-# This is a comment - Python ignores this line
-print("Hello, World!")
-    """, language="python")
-    
-    st.markdown('<div class="code-output">**Output:** Hello, World!</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    **What's happening here?**
-    - `#` creates a comment (not executed)
-    - `print()` is a function that displays text
-    - Text in quotes is called a "string"
-    """)
-    
-    st.markdown("### Try It Yourself! ✏️")
-    user_message = st.text_input("Type a message to print:", "Hello, Python!")
-    if st.button("Run Code"):
-        st.markdown(f'<div class="code-output">**Output:** {user_message}</div>', unsafe_allow_html=True)
-    
-    with st.expander("🎯 Practice Exercise"):
-        st.markdown("""
-        **Challenge:** Modify the code to print your name and age on separate lines.
-        
-        **Hint:** Use `print()` twice!
-        """)
-        
-        user_code = st.text_area("Write your code here:", 
-                                 'print("Your name")\nprint("Your age")')
-        if st.button("Test Your Code"):
-            try:
-                exec(user_code)
-                st.success("✅ Code executed!")
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
-
-elif selected_lesson == "3️⃣ Variables & Data Types":
-    st.header("Lesson 3: Variables & Data Types")
-    
-    st.markdown("""
-    ### What are Variables? 📦
-    
-    Variables are containers that store data. Think of them as labeled boxes!
-    """)
-    
-    st.code("""
-# Creating variables
-name = "Hadjar"
+    st.code("""name = "Hadjar"
 age = 25
-height = 1.75
-is_student = True
-
 print(name)
-print(age)
-    """, language="python")
+print(age)""", language="python")
     
-    st.markdown('<div class="code-output">**Output:**<br>Hadjar<br>25</div>', unsafe_allow_html=True)
+    st.markdown("### Create a variable:")
+    col1, col2 = st.columns(2)
+    with col1:
+        var_name = st.text_input("Name:", "my_var")
+    with col2:
+        var_value = st.text_input("Value:", "Hello")
     
-    st.markdown("""
-    ### Data Types in Python 📊
-    
-    | Type | Example | Description |
-    |------|---------|-------------|
-    | `int` | 42 | Whole numbers |
-    | `float` | 3.14 | Decimal numbers |
-    | `str` | "Hello" | Text |
-    | `bool` | True/False | Boolean values |
-    """)
-    
-    st.markdown('<div class="lesson-box">', unsafe_allow_html=True)
-    st.markdown("""
-    **🎯 Naming Rules:**
-    - Start with letter or underscore
-    - Can contain letters, numbers, underscores
-    - Case-sensitive (age ≠ Age)
-    - No spaces or special characters
-    """)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    with st.expander("🔬 Interactive Demo"):
-        st.markdown("**Create your own variable:**")
-        var_name = st.text_input("Variable name:", "my_variable")
-        var_value = st.text_input("Variable value:", "Python is fun!")
-        var_type = type(var_value).__name__
-        
-        if st.button("Create Variable"):
-            st.code(f'{var_name} = "{var_value}"', language="python")
-            st.info(f"Type: {var_type}")
+    if st.button("Create"):
+        st.code(f'{var_name} = "{var_value}"', language="python")
 
-elif selected_lesson == "4️⃣ Basic Operations":
-    st.header("Lesson 4: Basic Operations")
-    
-    st.markdown("""
-    ### Arithmetic Operations ➕➖✖️➗
-    """)
+elif selected == "3️⃣ Math":
+    st.header("Math Operations")
     
     col1, col2 = st.columns(2)
-    
     with col1:
-        st.code("""
-# Addition
-result = 10 + 5
-print(result)  # 15
-
-# Subtraction
-result = 10 - 5
-print(result)  # 5
-
-# Multiplication
-result = 10 * 5
-print(result)  # 50
-        """, language="python")
+        st.code("""10 + 5   # 15
+10 - 5   # 5
+10 * 5   # 50
+10 / 5   # 2""", language="python")
     
     with col2:
-        st.code("""
-# Division
-result = 10 / 5
-print(result)  # 2.0
-
-# Floor Division
-result = 10 // 3
-print(result)  # 3
-
-# Modulus (remainder)
-result = 10 % 3
-print(result)  # 1
-
-# Exponentiation
-result = 2 ** 3
-print(result)  # 8
-        """, language="python")
+        st.code("""10 // 3  # 3
+10 % 3   # 1
+2 ** 3   # 8""", language="python")
     
-    st.markdown("### 🧮 Calculator Exercise")
+    st.markdown("### 🧮 Calculator")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        num1 = st.number_input("Number 1:", value=10.0)
+    with col2:
+        op = st.selectbox("", ["+", "-", "*", "/"])
+    with col3:
+        num2 = st.number_input("Number 2:", value=5.0)
+    
+    if st.button("Calculate"):
+        result = eval(f"{num1}{op}{num2}")
+        st.success(f"**{num1} {op} {num2} = {result}**")
+
+elif selected == "4️⃣ Text":
+    st.header("Working with Text")
+    
+    st.code("""text = "Python"
+print(text.upper())  # PYTHON
+print(text.lower())  # python
+print(len(text))     # 6""", language="python")
+    
+    st.markdown("### Try it:")
+    text = st.text_input("Enter text:", "Hello Python")
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        num1 = st.number_input("First number:", value=10.0)
+        if st.button("UPPER"):
+            st.code(text.upper())
     with col2:
-        operation = st.selectbox("Operation:", ["+", "-", "*", "/", "//", "%", "**"])
+        if st.button("lower"):
+            st.code(text.lower())
     with col3:
-        num2 = st.number_input("Second number:", value=5.0)
-    
-    if st.button("Calculate"):
-        try:
-            if operation == "+":
-                result = num1 + num2
-            elif operation == "-":
-                result = num1 - num2
-            elif operation == "*":
-                result = num1 * num2
-            elif operation == "/":
-                result = num1 / num2
-            elif operation == "//":
-                result = num1 // num2
-            elif operation == "%":
-                result = num1 % num2
-            elif operation == "**":
-                result = num1 ** num2
-            
-            st.success(f"**Result:** {num1} {operation} {num2} = {result}")
-        except Exception as e:
-            st.error(f"Error: {e}")
+        if st.button("Length"):
+            st.info(f"{len(text)} characters")
 
-elif selected_lesson == "5️⃣ Strings":
-    st.header("Lesson 5: Working with Strings")
+elif selected == "5️⃣ Lists":
+    st.header("Lists")
     
-    st.markdown("""
-    ### String Basics 📝
+    st.code("""fruits = ["apple", "banana", "cherry"]
+print(fruits[0])      # apple
+fruits.append("orange")
+print(len(fruits))    # 4""", language="python")
     
-    Strings are sequences of characters enclosed in quotes.
-    """)
+    st.markdown("### List Manager:")
     
-    st.code("""
-# Creating strings
-single_quote = 'Hello'
-double_quote = "World"
-multi_line = '''This is
-a multi-line
-string'''
+    if 'items' not in st.session_state:
+        st.session_state.items = []
+    
+    st.write(f"**List:** {st.session_state.items}")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        new = st.text_input("Add item:")
+    with col2:
+        st.write("")
+        st.write("")
+        if st.button("➕ Add"):
+            st.session_state.items.append(new)
+            st.rerun()
+    
+    if st.button("🗑️ Clear"):
+        st.session_state.items = []
+        st.rerun()
 
-# String concatenation
-greeting = "Hello" + " " + "World"
-print(greeting)  # Hello World
-
-# String repetition
-laugh = "Ha" * 3
-print(laugh)  # HaHaHa
-    """, language="python")
+elif selected == "6️⃣ If/Else":
+    st.header("If/Else")
     
-    st.markdown("""
-    ### Useful String Methods 🛠️
-    """)
-    
-    st.code("""
-text = "Python Programming"
-
-print(text.upper())      # PYTHON PROGRAMMING
-print(text.lower())      # python programming
-print(text.title())      # Python Programming
-print(text.replace("Python", "Java"))  # Java Programming
-print(len(text))         # 18
-print(text[0])           # P (first character)
-print(text[-1])          # g (last character)
-    """, language="python")
-    
-    with st.expander("🎯 String Playground"):
-        user_text = st.text_input("Enter some text:", "Python is awesome!")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("UPPERCASE"):
-                st.code(user_text.upper())
-            if st.button("lowercase"):
-                st.code(user_text.lower())
-            if st.button("Title Case"):
-                st.code(user_text.title())
-        
-        with col2:
-            if st.button("Length"):
-                st.info(f"Length: {len(user_text)} characters")
-            if st.button("Reverse"):
-                st.code(user_text[::-1])
-            
-            find_char = st.text_input("Find character:", "a")
-            if st.button("Count Character"):
-                count = user_text.count(find_char)
-                st.info(f"'{find_char}' appears {count} time(s)")
-
-elif selected_lesson == "6️⃣ Lists":
-    st.header("Lesson 6: Lists")
-    
-    st.markdown("""
-    ### What are Lists? 📋
-    
-    Lists are ordered collections that can hold multiple items.
-    """)
-    
-    st.code("""
-# Creating a list
-fruits = ["apple", "banana", "cherry"]
-numbers = [1, 2, 3, 4, 5]
-mixed = [1, "hello", 3.14, True]
-
-# Accessing items
-print(fruits[0])   # apple
-print(fruits[-1])  # cherry
-
-# Modifying lists
-fruits.append("orange")      # Add to end
-fruits.insert(0, "mango")    # Insert at position
-fruits.remove("banana")      # Remove item
-last = fruits.pop()          # Remove and return last
-
-# List operations
-print(len(fruits))           # Length
-print("apple" in fruits)     # Check if exists
-    """, language="python")
-    
-    st.markdown("""
-    ### Common List Methods 🛠️
-    
-    | Method | Description | Example |
-    |--------|-------------|---------|
-    | `append()` | Add item to end | `list.append(item)` |
-    | `insert()` | Insert at position | `list.insert(0, item)` |
-    | `remove()` | Remove first occurrence | `list.remove(item)` |
-    | `pop()` | Remove and return item | `list.pop(index)` |
-    | `sort()` | Sort the list | `list.sort()` |
-    | `reverse()` | Reverse the list | `list.reverse()` |
-    """)
-    
-    with st.expander("🎯 Interactive List Manager"):
-        if 'my_list' not in st.session_state:
-            st.session_state.my_list = []
-        
-        st.markdown(f"**Current List:** `{st.session_state.my_list}`")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            new_item = st.text_input("Add item to list:")
-            if st.button("Add"):
-                st.session_state.my_list.append(new_item)
-                st.rerun()
-        
-        with col2:
-            if st.button("Clear List"):
-                st.session_state.my_list = []
-                st.rerun()
-            if st.button("Sort List"):
-                st.session_state.my_list.sort()
-                st.rerun()
-
-elif selected_lesson == "7️⃣ Conditional Statements":
-    st.header("Lesson 7: Conditional Statements")
-    
-    st.markdown("""
-    ### Making Decisions with If-Else 🤔
-    
-    Conditional statements allow your program to make decisions.
-    """)
-    
-    st.code("""
-age = 18
+    st.code("""age = 18
 
 if age >= 18:
-    print("You are an adult")
+    print("Adult")
 else:
-    print("You are a minor")
+    print("Minor")""", language="python")
+    
+    st.markdown("### Grade Calculator:")
+    score = st.slider("Your score:", 0, 100, 75)
+    
+    if st.button("Get Grade"):
+        if score >= 90:
+            st.success("🌟 Grade: A - Excellent!")
+        elif score >= 80:
+            st.success("😊 Grade: B - Great!")
+        elif score >= 70:
+            st.info("👍 Grade: C - Good!")
+        elif score >= 60:
+            st.warning("📚 Grade: D - Keep studying!")
+        else:
+            st.error("💪 Grade: F - Don't give up!")
 
-# Multiple conditions
-score = 85
+elif selected == "7️⃣ Loops":
+    st.header("Loops")
+    
+    st.code("""for i in range(5):
+    print(i)
 
-if score >= 90:
-    print("Grade: A")
-elif score >= 80:
-    print("Grade: B")
-elif score >= 70:
-    print("Grade: C")
-else:
-    print("Grade: F")
-    """, language="python")
+# Output: 0, 1, 2, 3, 4""", language="python")
     
-    st.markdown("""
-    ### Comparison Operators 📊
+    st.markdown("### Loop Demo:")
+    n = st.slider("Count to:", 1, 10, 5)
     
-    | Operator | Meaning | Example |
-    |----------|---------|---------|
-    | `==` | Equal to | `x == 5` |
-    | `!=` | Not equal to | `x != 5` |
-    | `>` | Greater than | `x > 5` |
-    | `<` | Less than | `x < 5` |
-    | `>=` | Greater or equal | `x >= 5` |
-    | `<=` | Less or equal | `x <= 5` |
-    """)
-    
-    with st.expander("🎯 Grade Calculator"):
-        st.markdown("**Enter your score to get your grade:**")
-        score = st.slider("Score:", 0, 100, 75)
-        
-        if st.button("Calculate Grade"):
-            if score >= 90:
-                grade = "A"
-                emoji = "🌟"
-                message = "Excellent!"
-            elif score >= 80:
-                grade = "B"
-                emoji = "😊"
-                message = "Great job!"
-            elif score >= 70:
-                grade = "C"
-                emoji = "👍"
-                message = "Good work!"
-            elif score >= 60:
-                grade = "D"
-                emoji = "📚"
-                message = "Keep studying!"
-            else:
-                grade = "F"
-                emoji = "💪"
-                message = "Don't give up!"
-            
-            st.success(f"{emoji} **Grade: {grade}** - {message}")
+    if st.button("▶ Run Loop"):
+        output = []
+        for i in range(n):
+            output.append(str(i))
+        st.code(", ".join(output))
 
-elif selected_lesson == "8️⃣ Loops":
-    st.header("Lesson 8: Loops")
+elif selected == "8️⃣ Functions":
+    st.header("Functions")
     
-    st.markdown("""
-    ### For Loops 🔁
-    
-    For loops iterate over sequences (lists, strings, ranges).
-    """)
-    
-    st.code("""
-# Loop through a list
-fruits = ["apple", "banana", "cherry"]
-for fruit in fruits:
-    print(fruit)
-
-# Loop through a range
-for i in range(5):
-    print(i)  # 0, 1, 2, 3, 4
-
-# Loop through a string
-for char in "Python":
-    print(char)
-    """, language="python")
-    
-    st.markdown("""
-    ### While Loops ⭕
-    
-    While loops continue until a condition is False.
-    """)
-    
-    st.code("""
-count = 0
-while count < 5:
-    print(count)
-    count += 1  # Increment count
-    """, language="python")
-    
-    with st.expander("🎯 Loop Visualizer"):
-        st.markdown("**For Loop Demo:**")
-        loop_type = st.radio("Choose loop type:", ["Range", "List", "String"])
-        
-        if loop_type == "Range":
-            n = st.slider("Range (0 to n):", 1, 10, 5)
-            if st.button("Run Loop"):
-                output = []
-                for i in range(n):
-                    output.append(f"Iteration {i}")
-                st.code("\n".join(output))
-        
-        elif loop_type == "List":
-            items = st.text_input("Enter items (comma-separated):", "apple,banana,cherry")
-            if st.button("Run Loop"):
-                output = []
-                for item in items.split(","):
-                    output.append(f"Item: {item.strip()}")
-                st.code("\n".join(output))
-        
-        else:  # String
-            text = st.text_input("Enter text:", "Python")
-            if st.button("Run Loop"):
-                output = []
-                for char in text:
-                    output.append(f"Character: {char}")
-                st.code("\n".join(output))
-
-elif selected_lesson == "9️⃣ Functions":
-    st.header("Lesson 9: Functions")
-    
-    st.markdown("""
-    ### What are Functions? 🔧
-    
-    Functions are reusable blocks of code that perform specific tasks.
-    """)
-    
-    st.code("""
-# Defining a function
-def greet(name):
+    st.code("""def greet(name):
     return f"Hello, {name}!"
 
-# Calling the function
 message = greet("Hadjar")
-print(message)  # Hello, Hadjar!
+print(message)  # Hello, Hadjar!""", language="python")
+    
+    st.markdown("### Try it:")
+    name = st.text_input("Your name:", "Student")
+    
+    if st.button("Greet Me"):
+        st.markdown(f'<div class="code-output">Hello, {name}! 👋</div>', unsafe_allow_html=True)
 
-# Function with multiple parameters
-def add(a, b):
-    return a + b
-
-result = add(5, 3)
-print(result)  # 8
-
-# Function with default parameter
-def greet_person(name="Student"):
-    return f"Welcome, {name}!"
-
-print(greet_person())          # Welcome, Student!
-print(greet_person("Naila"))   # Welcome, Naila!
-    """, language="python")
+elif selected == "🎮 Projects":
+    st.header("Practice Projects")
     
-    st.markdown("""
-    ### Why Use Functions? 🎯
+    project = st.selectbox("Choose:", ["Temperature Converter", "Calculator", "To-Do List"])
     
-    - **Reusability:** Write once, use many times
-    - **Organization:** Break complex problems into smaller pieces
-    - **Maintainability:** Easier to update and debug
-    - **Readability:** Make code more understandable
-    """)
-    
-    with st.expander("🎯 Function Builder"):
-        st.markdown("**Create your own function:**")
+    if project == "Temperature Converter":
+        st.markdown("### 🌡️ Temperature Converter")
         
-        func_name = st.text_input("Function name:", "calculate_area")
-        param1 = st.text_input("Parameter 1:", "width")
-        param2 = st.text_input("Parameter 2:", "height")
-        
-        operation = st.selectbox("Operation:", ["multiply", "add", "subtract", "divide"])
-        
-        if st.button("Generate Function"):
-            operators = {"multiply": "*", "add": "+", "subtract": "-", "divide": "/"}
-            op = operators[operation]
-            
-            function_code = f"""def {func_name}({param1}, {param2}):
-    result = {param1} {op} {param2}
-    return result
-
-# Test the function
-output = {func_name}(10, 5)
-print(output)"""
-            
-            st.code(function_code, language="python")
-
-elif selected_lesson == "🔟 Practice Projects":
-    st.header("Lesson 10: Practice Projects")
-    
-    st.markdown("""
-    ### Put Your Skills to Practice! 💪
-    
-    Choose a project to work on and apply what you've learned.
-    """)
-    
-    project = st.selectbox("Choose a project:", 
-                          ["Number Guessing Game", "Temperature Converter", "Simple Calculator", "To-Do List"])
-    
-    if project == "Number Guessing Game":
-        st.markdown("""
-        ### 🎲 Number Guessing Game
-        
-        **Project Description:**
-        Create a game where the computer picks a random number, and the user tries to guess it.
-        
-        **Requirements:**
-        - Generate a random number between 1 and 100
-        - Let user make guesses
-        - Give hints (too high/too low)
-        - Count number of attempts
-        """)
-        
-        st.code("""
-import random
-
-number = random.randint(1, 100)
-attempts = 0
-
-while True:
-    guess = int(input("Guess the number (1-100): "))
-    attempts += 1
-    
-    if guess == number:
-        print(f"Correct! You got it in {attempts} attempts!")
-        break
-    elif guess < number:
-        print("Too low! Try again.")
-    else:
-        print("Too high! Try again.")
-        """, language="python")
-    
-    elif project == "Temperature Converter":
-        st.markdown("""
-        ### 🌡️ Temperature Converter
-        
-        **Project Description:**
-        Convert temperatures between Celsius and Fahrenheit.
-        
-        **Formulas:**
-        - Celsius to Fahrenheit: (C × 9/5) + 32
-        - Fahrenheit to Celsius: (F - 32) × 5/9
-        """)
-        
-        st.markdown("**Interactive Demo:**")
-        temp_type = st.radio("Convert from:", ["Celsius to Fahrenheit", "Fahrenheit to Celsius"])
-        temp_value = st.number_input("Enter temperature:", value=0.0)
+        temp_type = st.radio("", ["°C → °F", "°F → °C"])
+        temp = st.number_input("Temperature:", value=0.0)
         
         if st.button("Convert"):
-            if temp_type == "Celsius to Fahrenheit":
-                result = (temp_value * 9/5) + 32
-                st.success(f"{temp_value}°C = {result:.2f}°F")
+            if temp_type == "°C → °F":
+                result = (temp * 9/5) + 32
+                st.success(f"{temp}°C = {result:.1f}°F")
             else:
-                result = (temp_value - 32) * 5/9
-                st.success(f"{temp_value}°F = {result:.2f}°C")
+                result = (temp - 32) * 5/9
+                st.success(f"{temp}°F = {result:.1f}°C")
     
-    elif project == "Simple Calculator":
-        st.markdown("""
-        ### 🧮 Simple Calculator
+    elif project == "Calculator":
+        st.markdown("### 🧮 Calculator")
         
-        **Project Description:**
-        Create a calculator that performs basic arithmetic operations.
-        """)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            a = st.number_input("First:", value=0.0)
+        with col2:
+            op = st.selectbox("Op:", ["+", "-", "*", "/"])
+        with col3:
+            b = st.number_input("Second:", value=0.0)
         
-        st.code("""
-def calculator():
-    num1 = float(input("Enter first number: "))
-    operator = input("Enter operator (+, -, *, /): ")
-    num2 = float(input("Enter second number: "))
-    
-    if operator == "+":
-        result = num1 + num2
-    elif operator == "-":
-        result = num1 - num2
-    elif operator == "*":
-        result = num1 * num2
-    elif operator == "/":
-        result = num1 / num2
-    else:
-        print("Invalid operator!")
-        return
-    
-    print(f"{num1} {operator} {num2} = {result}")
-
-calculator()
-        """, language="python")
+        if st.button("="):
+            result = eval(f"{a}{op}{b}")
+            st.success(f"**{a} {op} {b} = {result}**")
     
     else:  # To-Do List
-        st.markdown("""
-        ### ✅ To-Do List Manager
+        st.markdown("### ✅ To-Do List")
         
-        **Project Description:**
-        Create a simple to-do list application.
+        if 'todos' not in st.session_state:
+            st.session_state.todos = []
         
-        **Features:**
-        - Add tasks
-        - View all tasks
-        - Remove completed tasks
-        """)
+        task = st.text_input("New task:")
+        if st.button("➕ Add") and task:
+            st.session_state.todos.append(task)
+            st.rerun()
         
-        if 'todo_list' not in st.session_state:
-            st.session_state.todo_list = []
-        
-        st.markdown("**Interactive Demo:**")
-        new_task = st.text_input("Add a new task:")
-        if st.button("Add Task") and new_task:
-            st.session_state.todo_list.append(new_task)
-            st.success(f"Added: {new_task}")
-        
-        if st.session_state.todo_list:
-            st.markdown("**Your Tasks:**")
-            for idx, task in enumerate(st.session_state.todo_list, 1):
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    st.write(f"{idx}. {task}")
-                with col2:
-                    if st.button("✓", key=f"done_{idx}"):
-                        st.session_state.todo_list.pop(idx-1)
-                        st.rerun()
+        for i, todo in enumerate(st.session_state.todos):
+            col1, col2 = st.columns([5, 1])
+            with col1:
+                st.write(f"{i+1}. {todo}")
+            with col2:
+                if st.button("✓", key=i):
+                    st.session_state.todos.pop(i)
+                    st.rerun()
 
 # Footer
 st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666;'>
-    <p>💻 <strong>Futuro Skills Academy</strong> | Instructor: Hadjar Naila</p>
-    <p>Keep practicing and building projects! The best way to learn is by doing. 🚀</p>
-</div>
-""", unsafe_allow_html=True)
-
+st.markdown("<div style='text-align: center; color: #666;'>Keep practicing! 🚀</div>", unsafe_allow_html=True)
