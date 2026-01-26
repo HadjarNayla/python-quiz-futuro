@@ -422,9 +422,9 @@ elif lesson_id == "output":
     
     <h4>Different Ways to Print:</h4>
     <code>print("Hello")</code> - Print text<br>
-    <code>print(25)</code> - Print number<br>
+    <code>print(23)</code> - Print number<br>
     <code>print(x)</code> - Print variable<br>
-    <code>print("Age:", 25)</code> - Print multiple items<br>
+    <code>print("Age:", 23)</code> - Print multiple items<br>
     <code>print("Hello", "World")</code> - Separated by space
     
     <h4>Special Characters:</h4>
@@ -1274,4 +1274,5 @@ st.markdown("""
     <p style='color: #F18F01;'>© 2024 Futuro Skills Academy - Hadjar Naila</p>
 </div>
 """, unsafe_allow_html=True)
+
 
