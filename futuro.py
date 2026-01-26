@@ -633,4 +633,486 @@ elif lesson_id == "comp_operators":
     with st.container():
         st.markdown('<div class="theory-box">', unsafe_allow_html=True)
         st.markdown("### Comparison Operators")
-        st.
+        st.markdown("These operators compare values and return `True` or `False`.")
+        
+        data = {
+            "Operator": ["`==`", "`!=`", "`>`", "`<`", "`>=`", "`<=`"],
+            "Meaning": ["Equal to", "Not equal to", "Greater than", "Less than", "Greater or equal", "Less or equal"],
+            "Example": ["`5 == 5`", "`5 != 3`", "`10 > 5`", "`5 < 10`", "`5 >= 5`", "`3 <= 5`"],
+            "Result": ["True", "True", "True", "True", "True", "True"]
+        }
+        st.table(data)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        Test all comparison operators:
+        1. Create `x = 10` and `y = 5`
+        2. Print result of `x == y`
+        3. Print result of `x != y`
+        4. Print result of `x > y`
+        5. Print result of `x < y`
+        6. Print result of `x >= 10`
+        7. Print result of `y <= 5`
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=300, key="comp_code")
+    
+    if st.button("▶️ Run Code", key="run_comp"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "logical_operators":
+    st.markdown('<div class="lesson-title">🔗 Logical Operators</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### Logical Operators")
+        st.markdown("Combine multiple conditions.")
+        
+        data = {
+            "Operator": ["`and`", "`or`", "`not`"],
+            "Description": ["Both must be True", "At least one True", "Reverses the value"],
+            "Example": ["`True and True`", "`True or False`", "`not True`"],
+            "Result": ["True", "True", "False"]
+        }
+        st.table(data)
+        
+        st.markdown("#### Examples:")
+        st.code("""age = 20
+has_id = True
+can_enter = age >= 18 and has_id  # True
+
+is_student = True
+is_senior = False
+gets_discount = is_student or is_senior  # True""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        1. Create: `age = 25`, `has_license = True`
+        2. Check: `age >= 18 and has_license`
+        3. Create: `is_weekend = False`, `is_holiday = True`
+        4. Check: `is_weekend or is_holiday`
+        5. Create: `is_raining = True`
+        6. Check: `not is_raining`
+        
+        Print all results with labels.
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=300, key="logical_code")
+    
+    if st.button("▶️ Run Code", key="run_logical"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "cond_if":
+    st.markdown('<div class="lesson-title">❓ if Statement</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### The if Statement")
+        st.markdown("Executes code only if a condition is `True`.")
+        st.markdown("#### Syntax:")
+        st.code("""if condition:
+    # code to execute
+    # must be indented (4 spaces or Tab)""", language="python")
+        st.markdown("#### Example:")
+        st.code("""age = 20
+if age >= 18:
+    print("You are an adult")
+    print("You can vote")""", language="python")
+        st.markdown("**Important:** Indentation (spaces) is REQUIRED!")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        Write a program that:
+        1. Creates a variable `temperature = 30`
+        2. If temperature is greater than 25, print "It's hot!"
+        3. If temperature is greater than 35, print "It's very hot!"
+        
+        Remember to use proper indentation!
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=250, key="cond_if_code")
+    
+    if st.button("▶️ Run Code", key="run_cond_if"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "cond_ifelse":
+    st.markdown('<div class="lesson-title">🔀 if/else Statement</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### The if/else Statement")
+        st.markdown("Executes one block if `True`, another if `False`.")
+        st.markdown("#### Syntax:")
+        st.code("""if condition:
+    # code if True
+else:
+    # code if False""", language="python")
+        st.markdown("#### Example:")
+        st.code("""age = 16
+if age >= 18:
+    print("You can vote")
+else:
+    print("You cannot vote yet")""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        Write a program that:
+        1. Creates a variable `score = 75`
+        2. If score >= 60, print "You passed!"
+        3. Otherwise, print "You failed. Try again!"
+        
+        Test with different scores to see both messages.
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=250, key="cond_ifelse_code")
+    
+    if st.button("▶️ Run Code", key="run_cond_ifelse"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "cond_ifelif":
+    st.markdown('<div class="lesson-title">🔀 if/elif/else Statement</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### The if/elif/else Statement")
+        st.markdown("Test multiple conditions in order.")
+        st.markdown("#### Syntax:")
+        st.code("""if condition1:
+    # code if condition1 is True
+elif condition2:
+    # code if condition2 is True
+elif condition3:
+    # code if condition3 is True
+else:
+    # code if all are False""", language="python")
+        st.markdown("#### Example:")
+        st.code("""score = 85
+if score >= 90:
+    print("Grade: A")
+elif score >= 80:
+    print("Grade: B")
+elif score >= 70:
+    print("Grade: C")
+elif score >= 60:
+    print("Grade: D")
+else:
+    print("Grade: F")""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        Create a temperature classifier:
+        1. Create variable `temp`
+        2. If temp > 30: print "Hot"
+        3. Elif temp > 20: print "Warm"
+        4. Elif temp > 10: print "Cool"
+        5. Else: print "Cold"
+        
+        Test with different temperatures!
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=300, key="cond_ifelif_code")
+    
+    if st.button("▶️ Run Code", key="run_cond_ifelif"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "loop_for":
+    st.markdown('<div class="lesson-title">🔁 for Loop</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### The for Loop")
+        st.markdown("Repeats code a specific number of times.")
+        st.markdown("#### Syntax:")
+        st.code("""for variable in sequence:
+    # code to repeat""", language="python")
+        st.markdown("#### Examples:")
+        st.code("""for i in [1, 2, 3, 4, 5]:
+    print(i)
+
+for name in ["Alice", "Bob", "Charlie"]:
+    print("Hello", name)
+
+for letter in "Python":
+    print(letter)""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        1. Create a list of 5 fruits
+        2. Use a for loop to print each fruit
+        3. Loop through the word "PYTHON" and print each letter
+        4. Loop through numbers [10, 20, 30, 40, 50] and print each
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=300, key="loop_for_code")
+    
+    if st.button("▶️ Run Code", key="run_loop_for"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "loop_range":
+    st.markdown('<div class="lesson-title">🔁 The range() Function</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### Using range() with for Loops")
+        st.markdown("`range()` generates a sequence of numbers.")
+        st.markdown("""
+        #### Three Ways to Use range():
+        1. `range(stop)` - from 0 to stop-1
+        2. `range(start, stop)` - from start to stop-1
+        3. `range(start, stop, step)` - with custom step
+        """)
+        st.markdown("#### Examples:")
+        st.code("""for i in range(5):
+    print(i)  # 0, 1, 2, 3, 4
+
+for i in range(2, 7):
+    print(i)  # 2, 3, 4, 5, 6
+
+for i in range(0, 10, 2):
+    print(i)  # 0, 2, 4, 6, 8
+
+for i in range(10, 0, -1):
+    print(i)  # 10, 9, 8, ..., 1""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        Write loops to print:
+        1. Numbers from 0 to 10
+        2. Numbers from 5 to 15
+        3. Even numbers from 0 to 20 (use step=2)
+        4. Numbers from 20 down to 1 (backwards)
+        5. Multiples of 5 from 0 to 50
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=350, key="loop_range_code")
+    
+    if st.button("▶️ Run Code", key="run_loop_range"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "loop_while":
+    st.markdown('<div class="lesson-title">🔁 while Loop</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### The while Loop")
+        st.markdown("Repeats code while a condition is `True`.")
+        st.markdown("#### Syntax:")
+        st.code("""while condition:
+    # code to repeat
+    # MUST update condition or loop forever!""", language="python")
+        st.markdown("#### Example:")
+        st.code("""count = 1
+while count <= 5:
+    print(count)
+    count = count + 1  # or count += 1
+
+# Output: 1, 2, 3, 4, 5""", language="python")
+        st.markdown("**⚠️ Warning:** Always update the condition variable to avoid infinite loops!")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        1. Print numbers from 1 to 10 using while loop
+        2. Print even numbers from 2 to 20
+        3. Count down from 10 to 1
+        4. Start at 1 and double until >= 100 (1, 2, 4, 8, ...)
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=350, key="loop_while_code")
+    
+    if st.button("▶️ Run Code", key="run_loop_while"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "loop_nested":
+    st.markdown('<div class="lesson-title">🔁 Nested Loops</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### Nested Loops")
+        st.markdown("A loop inside another loop.")
+        st.markdown("#### Syntax:")
+        st.code("""for i in range(3):
+    for j in range(3):
+        print(i, j)""", language="python")
+        st.markdown("#### Example - Multiplication Table:")
+        st.code("""for i in range(1, 4):
+    for j in range(1, 4):
+        print(f"{i} x {j} = {i*j}")""", language="python")
+        st.markdown("#### Pattern Example:")
+        st.code("""for i in range(5):
+    for j in range(i + 1):
+        print("*", end="")
+    print()  # New line
+
+# Output:
+# *
+# **
+# ***
+# ****
+# *****""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        1. Print a 5x5 grid of coordinates (i, j)
+        2. Create a multiplication table for 1-5
+        3. Print this pattern:
+           ```
+           1
+           22
+           333
+           4444
+           55555
+           ```
+        4. Print a rectangle of stars (5 rows, 10 columns)
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=400, key="loop_nested_code")
+    
+    if st.button("▶️ Run Code", key="run_loop_nested"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+elif lesson_id == "loop_control":
+    st.markdown('<div class="lesson-title">🔁 Loop Control: break and continue</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="theory-box">', unsafe_allow_html=True)
+        st.markdown("### break and continue Statements")
+        st.markdown("#### break - Exit the loop completely")
+        st.code("""for i in range(10):
+    if i == 5:
+        break  # Stop loop at 5
+    print(i)
+# Output: 0, 1, 2, 3, 4""", language="python")
+        st.markdown("#### continue - Skip current iteration")
+        st.code("""for i in range(6):
+    if i == 3:
+        continue  # Skip 3
+    print(i)
+# Output: 0, 1, 2, 4, 5""", language="python")
+        st.markdown("#### Example - Skip even numbers:")
+        st.code("""for i in range(10):
+    if i % 2 == 0:
+        continue
+    print(i)  # Only odd numbers""", language="python")
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="task-box">', unsafe_allow_html=True)
+        st.markdown("### 📝 Your Task:")
+        st.markdown("""
+        1. Loop 1-20, but break at 15
+        2. Loop 1-10, skip (continue) number 5
+        3. Print numbers 1-30, but skip multiples of 3
+        4. Loop and find first number divisible by 7 and 5, then break
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    code = st.text_area("✏️ Write your code here:", height=350, key="loop_control_code")
+    
+    if st.button("▶️ Run Code", key="run_loop_control"):
+        if code.strip():
+            output, error = execute_code(code)
+            if error:
+                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
+            else:
+                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+
+# Footer
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; color: #666; padding: 20px;'>
+    <p style='font-size: 1.1em;'><strong>Keep practicing! 🚀</strong></p>
+    <p>Master Python by writing code yourself!</p>
+    <p style='color: #F18F01;'>© 2024 Futuro Skills Academy - Hadjar Naila</p>
+</div>
+""", unsafe_allow_html=True)
