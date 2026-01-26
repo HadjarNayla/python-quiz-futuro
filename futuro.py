@@ -186,7 +186,7 @@ elif lesson_id == "var_int":
     <code>age = 25</code><br>
     <code>temperature = -10</code><br>
     <code>score = 0</code><br>
-    <code>year = 2024</code>
+    <code>year = 2026</code>
     
     <h4>Characteristics:</h4>
     <ul>
@@ -1274,3 +1274,4 @@ st.markdown("""
     <p style='color: #F18F01;'>© 2024 Futuro Skills Academy - Hadjar Naila</p>
 </div>
 """, unsafe_allow_html=True)
+
