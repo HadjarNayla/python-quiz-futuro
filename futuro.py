@@ -432,8 +432,8 @@ elif lesson_id == "output":
     <code>\\t</code> - Tab
     
     <h4>Example:</h4>
-    <code>name = "Hadjar"</code><br>
-    <code>age = 25</code><br>
+    <code>name = "Naila"</code><br>
+    <code>age = 23</code><br>
     <code>print("Name:", name)</code><br>
     <code>print("Age:", age)</code>
     </div>
