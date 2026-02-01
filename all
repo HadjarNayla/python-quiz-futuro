@@ -1274,4 +1274,3 @@ st.markdown("""
     <p style='color: #F18F01;'>© 2024 Futuro Skills Academy - Hadjar Naila</p>
 </div>
 """, unsafe_allow_html=True)
-
