@@ -1,1276 +1,1526 @@
 import streamlit as st
-import sys
-from io import StringIO
+import pandas as pd
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
+import os
+from datetime import datetime, date, timedelta
+import io
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-# Page configuration
+# ─── Config ────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Interactive Python Learning - Futuro Skills Academy",
-    page_icon="🐍",
-    layout="wide"
+    page_title="Futuro Skills Academy",
+    page_icon="🎓",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# Custom CSS
-st.markdown("""
-    <style>
-    .main-header {
-        text-align: center;
-        color: #2E86AB;
-        font-size: 3em;
-        font-weight: bold;
-        margin-bottom: 0;
-    }
-    .instructor {
-        text-align: center;
-        color: #F18F01;
-        font-size: 1.2em;
-        margin-bottom: 2em;
-    }
-    .lesson-title {
-        color: #2E86AB;
-        font-size: 2em;
-        font-weight: bold;
-        border-bottom: 3px solid #F18F01;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
-    }
-    .theory-box {
-        background-color: #E3F2FD;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #2E86AB;
-        margin: 20px 0;
-    }
-    .task-box {
-        background-color: #FFF3E0;
-        padding: 20px;
-        border-radius: 10px;
-        border-left: 5px solid #F18F01;
-        margin: 20px 0;
-    }
-    .success-box {
-        background-color: #E8F5E9;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #4CAF50;
-        margin: 10px 0;
-    }
-    .error-box {
-        background-color: #FFEBEE;
-        padding: 15px;
-        border-radius: 5px;
-        border-left: 5px solid #F44336;
-        margin: 10px 0;
-    }
-    .output-box {
-        background-color: #F5F5F5;
-        padding: 15px;
-        border-radius: 5px;
-        font-family: monospace;
-        white-space: pre-wrap;
-        margin: 10px 0;
-        border: 1px solid #BDBDBD;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Header
-st.markdown('<p class="main-header">🐍 Interactive Python Learning</p>', unsafe_allow_html=True)
-st.markdown('<p class="instructor">by Hadjar Naila | Futuro Skills Academy</p>', unsafe_allow_html=True)
-
-# Function to execute code safely
-def execute_code(code, input_data=""):
-    old_stdout = sys.stdout
-    old_stdin = sys.stdin
-    sys.stdout = StringIO()
-    sys.stdin = StringIO(input_data)
-    
-    output = ""
-    error = ""
-    
-    try:
-        exec(code, {"__builtins__": __builtins__})
-        output = sys.stdout.getvalue()
-    except Exception as e:
-        error = str(e)
-    finally:
-        sys.stdout = old_stdout
-        sys.stdin = old_stdin
-    
-    return output, error
-
-# Sidebar
-st.sidebar.title("📚 Lessons")
-lessons = {
-    "🏠 Start Here": "intro",
-    "📊 Variables - Integers": "var_int",
-    "📊 Variables - Floats": "var_float",
-    "📊 Variables - Strings": "var_string",
-    "📊 Variables - Booleans": "var_bool",
-    "📊 Variables - Type Conversion": "var_conversion",
-    "🖨️ Output - print()": "output",
-    "⌨️ Input - input()": "input",
-    "➕ Arithmetic - Basic": "arith_basic",
-    "➗ Arithmetic - Advanced": "arith_advanced",
-    "🔢 Arithmetic - Operations": "arith_operations",
-    "❓ Conditions - if": "cond_if",
-    "🔀 Conditions - if/else": "cond_ifelse",
-    "🔀 Conditions - if/elif/else": "cond_ifelif",
-    "⚖️ Comparison Operators": "comp_operators",
-    "🔗 Logical Operators": "logical_operators",
-    "🔁 Loops - for": "loop_for",
-    "🔁 Loops - while": "loop_while",
-    "🔁 Loops - range()": "loop_range",
-    "🔁 Loops - Nested": "loop_nested",
-    "🔁 Loops - break/continue": "loop_control"
+EXCEL_FILE = "futuro_skills_data.xlsx"
+SHEETS = {
+    "etudiants": "Étudiants",
+    "groupes": "Groupes",
+    "professeurs": "Professeurs",
+    "paiements": "Paiements",
+    "inscriptions": "Inscriptions",
+    "presences": "Présences",
 }
 
-selected = st.sidebar.radio("", list(lessons.keys()))
-lesson_id = lessons[selected]
+# ─── Styles CSS ────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    [data-testid="stSidebar"] * { color: white !important; }
+    .main-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px 30px; border-radius: 15px; margin-bottom: 25px;
+        text-align: center; color: white;
+    }
+    .main-title h1 { font-size: 2.2rem; margin: 0; font-weight: 800; }
+    .main-title p { margin: 5px 0 0 0; opacity: 0.9; font-size: 1rem; }
+    .metric-card {
+        background: white; border-radius: 12px; padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08); border-left: 4px solid;
+        margin-bottom: 10px;
+    }
+    .metric-card.blue { border-left-color: #4361ee; }
+    .metric-card.green { border-left-color: #2dc653; }
+    .metric-card.orange { border-left-color: #f77f00; }
+    .metric-card.red { border-left-color: #ef233c; }
+    .metric-card.purple { border-left-color: #7b2d8b; }
+    .section-header {
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        color: white; padding: 12px 20px; border-radius: 10px;
+        margin: 15px 0; font-weight: 700; font-size: 1.1rem;
+    }
+    .alert-danger {
+        background: #fff5f5; border: 1px solid #feb2b2;
+        border-radius: 8px; padding: 12px 16px; margin: 8px 0;
+        color: #c53030;
+    }
+    .alert-warning {
+        background: #fffbeb; border: 1px solid #f6e05e;
+        border-radius: 8px; padding: 12px 16px; margin: 8px 0;
+        color: #744210;
+    }
+    .stButton > button {
+        border-radius: 8px; font-weight: 600; transition: all 0.2s;
+    }
+    div[data-testid="metric-container"] {
+        background: white; border-radius: 10px; padding: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    .badge {
+        display: inline-block; padding: 3px 10px; border-radius: 20px;
+        font-size: 0.8rem; font-weight: 600;
+    }
+    .badge-green { background: #c6f6d5; color: #276749; }
+    .badge-red { background: #fed7d7; color: #9b2c2c; }
+    .badge-orange { background: #feebc8; color: #7b341e; }
+</style>
+""", unsafe_allow_html=True)
 
-st.sidebar.markdown("---")
-st.sidebar.info("💡 Write the code yourself and click 'Run Code' to execute!")
+# ─── Excel Init ────────────────────────────────────────────────────────────────
+def init_excel():
+    if not os.path.exists(EXCEL_FILE):
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
 
-# Initialize session state
-if 'code_input' not in st.session_state:
-    st.session_state.code_input = {}
+        # Étudiants
+        ws = wb.create_sheet("Étudiants")
+        cols = ["ID","Prénom","Nom","Email","Téléphone","Date Naissance",
+                "Adresse","Groupe","Date Inscription","Frais Total","Statut Paiement"]
+        _style_header(ws, cols)
 
-# Main content
-if lesson_id == "intro":
-    st.markdown('<div class="lesson-title">🏠 Welcome to Interactive Python!</div>', unsafe_allow_html=True)
+        # Groupes
+        ws2 = wb.create_sheet("Groupes")
+        cols2 = ["ID Groupe","Nom Groupe","Professeur","Niveau","Horaire",
+                 "Salle","Date Début","Date Fin","Frais","Capacité Max","Nb Inscrits"]
+        _style_header(ws2, cols2)
+
+        # Professeurs
+        ws3 = wb.create_sheet("Professeurs")
+        cols3 = ["ID","Prénom","Nom","Email","Téléphone","Spécialité",
+                 "Taux Commission (%)","Groupes Assignés"]
+        _style_header(ws3, cols3)
+
+        # Paiements
+        ws4 = wb.create_sheet("Paiements")
+        cols4 = ["ID Paiement","ID Étudiant","Nom Étudiant","Groupe",
+                 "Montant Payé","Montant Dû","Date Paiement","Mode Paiement","Statut","Notes"]
+        _style_header(ws4, cols4)
+
+        # Inscriptions
+        ws5 = wb.create_sheet("Inscriptions")
+        cols5 = ["ID Inscription","ID Étudiant","Nom Complet","Groupe",
+                 "Professeur","Date Inscription","Frais","Statut"]
+        _style_header(ws5, cols5)
+
+        # Présences
+        ws6 = wb.create_sheet("Présences")
+        cols6 = ["ID","Groupe","Professeur","Date Séance","Numéro Séance",
+                 "ID Étudiant","Nom Étudiant","Statut","Commentaire"]
+        _style_header(ws6, cols6)
+
+        wb.save(EXCEL_FILE)
+    else:
+        # Add Présences sheet if missing (for existing files)
+        wb = openpyxl.load_workbook(EXCEL_FILE)
+        if "Présences" not in wb.sheetnames:
+            ws6 = wb.create_sheet("Présences")
+            cols6 = ["ID","Groupe","Professeur","Date Séance","Numéro Séance",
+                     "ID Étudiant","Nom Étudiant","Statut","Commentaire"]
+            _style_header(ws6, cols6)
+            wb.save(EXCEL_FILE)
+
+def _style_header(ws, cols):
+    header_fill = PatternFill("solid", start_color="1a1a2e")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    border = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+    for i, col in enumerate(cols, 1):
+        cell = ws.cell(row=1, column=i, value=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border = border
+        ws.column_dimensions[get_column_letter(i)].width = max(15, len(col) + 5)
+    ws.row_dimensions[1].height = 30
+
+# ─── Lecture / Écriture Excel ──────────────────────────────────────────────────
+def read_sheet(sheet_name):
+    try:
+        df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
+        return df
+    except:
+        return pd.DataFrame()
+
+def get_wb():
+    return openpyxl.load_workbook(EXCEL_FILE)
+
+def save_wb(wb):
+    wb.save(EXCEL_FILE)
+
+def next_id(df, col):
+    if df.empty or col not in df.columns:
+        return 1
+    try:
+        return int(df[col].max()) + 1
+    except:
+        return 1
+
+def append_row(sheet_name, row_data):
+    wb = get_wb()
+    ws = wb[sheet_name]
+    ws.append(row_data)
+    # Style row
+    last_row = ws.max_row
+    border = Border(left=Side(style='thin'), right=Side(style='thin'),
+                    top=Side(style='thin'), bottom=Side(style='thin'))
+    fill = PatternFill("solid", start_color="f8f9ff") if last_row % 2 == 0 else PatternFill("solid", start_color="FFFFFF")
+    for col in range(1, len(row_data) + 1):
+        cell = ws.cell(row=last_row, column=col)
+        cell.border = border
+        cell.fill = fill
+        cell.alignment = Alignment(vertical='center')
+    save_wb(wb)
+
+def update_row(sheet_name, id_col, id_val, updates: dict):
+    wb = get_wb()
+    ws = wb[sheet_name]
+    headers = [cell.value for cell in ws[1]]
+    id_idx = headers.index(id_col) + 1
+    for row in ws.iter_rows(min_row=2):
+        if row[id_idx-1].value == id_val:
+            for col_name, val in updates.items():
+                if col_name in headers:
+                    row[headers.index(col_name)].value = val
+            break
+    save_wb(wb)
+
+def delete_row(sheet_name, id_col, id_val):
+    wb = get_wb()
+    ws = wb[sheet_name]
+    headers = [cell.value for cell in ws[1]]
+    id_idx = headers.index(id_col) + 1
+    for row in ws.iter_rows(min_row=2):
+        if row[id_idx-1].value == id_val:
+            ws.delete_rows(row[0].row)
+            break
+    save_wb(wb)
+
+# ─── Génération PDF Groupe ──────────────────────────────────────────────────────
+def generate_pdf_groupe(groupe_nom, professeur, etudiants_df, paiements_df):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm,
+                            leftMargin=1.5*cm, rightMargin=1.5*cm)
+    styles = getSampleStyleSheet()
+    story = []
+
+    title_style = ParagraphStyle('title', fontSize=20, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#1a1a2e'), alignment=TA_CENTER, spaceAfter=6)
+    subtitle_style = ParagraphStyle('sub', fontSize=13, fontName='Helvetica',
+                                     textColor=colors.HexColor('#667eea'), alignment=TA_CENTER, spaceAfter=4)
+    info_style = ParagraphStyle('info', fontSize=10, fontName='Helvetica',
+                                 textColor=colors.HexColor('#555'), alignment=TA_CENTER, spaceAfter=12)
+    section_style = ParagraphStyle('section', fontSize=12, fontName='Helvetica-Bold',
+                                    textColor=colors.white, alignment=TA_LEFT)
+
+    # Header
+    story.append(Paragraph("🎓 FUTURO SKILLS ACADEMY", title_style))
+    story.append(Paragraph(f"Liste du Groupe : {groupe_nom}", subtitle_style))
+    story.append(Paragraph(f"Professeur : {professeur}  |  Date d'impression : {datetime.now().strftime('%d/%m/%Y %H:%M')}", info_style))
+    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#667eea'), spaceAfter=12))
+
+    # Stats
+    nb = len(etudiants_df)
+    payes = len(etudiants_df[etudiants_df.get("Statut Paiement", pd.Series([])) == "Payé"]) if not etudiants_df.empty and "Statut Paiement" in etudiants_df.columns else 0
     
-    col1, col2 = st.columns([2, 1])
+    stats_data = [
+        ['📊 Statistiques du Groupe', '', ''],
+        [f'Total étudiants: {nb}', f'Payés: {payes}', f'En attente: {nb - payes}'],
+    ]
+    stats_table = Table(stats_data, colWidths=[6*cm, 5*cm, 5*cm])
+    stats_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('SPAN', (0,0), (-1,0)),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f0f2ff')),
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 10),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.HexColor('#f0f2ff')]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(stats_table)
+    story.append(Spacer(1, 15))
+
+    # Liste étudiants
+    story.append(Paragraph("📋 Liste des Étudiants", subtitle_style))
+    story.append(Spacer(1, 8))
+
+    if etudiants_df.empty:
+        story.append(Paragraph("Aucun étudiant dans ce groupe.", info_style))
+    else:
+        headers = ['N°', 'Prénom', 'Nom', 'Téléphone', 'Email', 'Statut Paiement']
+        table_data = [headers]
+        for i, (_, row) in enumerate(etudiants_df.iterrows(), 1):
+            statut = row.get('Statut Paiement', 'N/A')
+            table_data.append([
+                str(i),
+                str(row.get('Prénom', '')),
+                str(row.get('Nom', '')),
+                str(row.get('Téléphone', '')),
+                str(row.get('Email', '')),
+                str(statut)
+            ])
+        
+        col_widths = [1*cm, 3.5*cm, 3.5*cm, 3*cm, 4.5*cm, 3*cm]
+        t = Table(table_data, colWidths=col_widths, repeatRows=1)
+        
+        style_cmds = [
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 10),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+            ('FONTSIZE', (0,1), (-1,-1), 9),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+            ('TOPPADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]
+        for i in range(1, len(table_data)):
+            bg = colors.HexColor('#f8f9ff') if i % 2 == 0 else colors.white
+            style_cmds.append(('BACKGROUND', (0,i), (-1,i), bg))
+            # Colorer statut
+            statut = table_data[i][5]
+            if statut == 'Payé':
+                style_cmds.append(('TEXTCOLOR', (5,i), (5,i), colors.HexColor('#276749')))
+                style_cmds.append(('FONTNAME', (5,i), (5,i), 'Helvetica-Bold'))
+            elif statut == 'Impayé':
+                style_cmds.append(('TEXTCOLOR', (5,i), (5,i), colors.HexColor('#c53030')))
+                style_cmds.append(('FONTNAME', (5,i), (5,i), 'Helvetica-Bold'))
+            else:
+                style_cmds.append(('TEXTCOLOR', (5,i), (5,i), colors.HexColor('#7b341e')))
+        
+        t.setStyle(TableStyle(style_cmds))
+        story.append(t)
+
+    # Paiement professeur
+    story.append(Spacer(1, 20))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cccccc'), spaceAfter=12))
+    story.append(Paragraph("💰 Rémunération du Professeur", subtitle_style))
+    story.append(Spacer(1, 8))
+
+    total_encaisse = 0
+    if not paiements_df.empty and 'Montant Payé' in paiements_df.columns:
+        groupe_paie = paiements_df[paiements_df['Groupe'] == groupe_nom] if 'Groupe' in paiements_df.columns else paiements_df
+        total_encaisse = groupe_paie['Montant Payé'].sum() if not groupe_paie.empty else 0
+
+    commission = total_encaisse * 0.50
+
+    pay_data = [
+        ['Description', 'Montant'],
+        ['Total encaissé du groupe', f'{total_encaisse:,.0f} MAD'],
+        ['Commission professeur (50%)', f'{commission:,.0f} MAD'],
+    ]
+    pay_table = Table(pay_data, colWidths=[10*cm, 6.5*cm])
+    pay_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+        ('BACKGROUND', (0,1), (-1,1), colors.HexColor('#f0f2ff')),
+        ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#c6f6d5')),
+        ('FONTNAME', (0,2), (-1,2), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0,2), (-1,2), colors.HexColor('#276749')),
+        ('FONTSIZE', (0,1), (-1,-1), 11),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+        ('TOPPADDING', (0,0), (-1,-1), 10),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(pay_table)
+
+    # Footer
+    story.append(Spacer(1, 20))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#cccccc'), spaceAfter=8))
+    footer_style = ParagraphStyle('footer', fontSize=8, textColor=colors.HexColor('#999'), alignment=TA_CENTER)
+    story.append(Paragraph("Futuro Skills Academy — Document confidentiel — Imprimé le " + datetime.now().strftime('%d/%m/%Y'), footer_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# ─── Génération PDF Feuille de Présence ───────────────────────────────────────
+def generate_pdf_presence(groupe_nom, professeur, date_seance, num_seance,
+                           horaire, salle, etudiants_df, presences_dict):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            topMargin=1.2*cm, bottomMargin=1.5*cm,
+                            leftMargin=1.5*cm, rightMargin=1.5*cm)
+    story = []
+
+    title_style = ParagraphStyle('title', fontSize=18, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#1a1a2e'), alignment=TA_CENTER, spaceAfter=4)
+    subtitle_style = ParagraphStyle('sub', fontSize=11, fontName='Helvetica',
+                                     textColor=colors.HexColor('#667eea'), alignment=TA_CENTER, spaceAfter=3)
+    info_style = ParagraphStyle('info', fontSize=9, fontName='Helvetica',
+                                 textColor=colors.HexColor('#555'), alignment=TA_CENTER, spaceAfter=8)
+    label_style = ParagraphStyle('label', fontSize=9, fontName='Helvetica-Bold',
+                                  textColor=colors.HexColor('#1a1a2e'))
+
+    # ── Header ──
+    story.append(Paragraph("FUTURO SKILLS ACADEMY", title_style))
+    story.append(Paragraph("FEUILLE DE PRESENCE", subtitle_style))
+    story.append(HRFlowable(width="100%", thickness=2, color=colors.HexColor('#667eea'), spaceAfter=8))
+
+    # ── Info bloc ──
+    date_str = date_seance.strftime('%A %d %B %Y').capitalize() if hasattr(date_seance, 'strftime') else str(date_seance)
+    info_data = [
+        [Paragraph('<b>Groupe :</b>', label_style), Paragraph(str(groupe_nom), label_style),
+         Paragraph('<b>Seance N° :</b>', label_style), Paragraph(str(num_seance), label_style)],
+        [Paragraph('<b>Professeur :</b>', label_style), Paragraph(str(professeur), label_style),
+         Paragraph('<b>Date :</b>', label_style), Paragraph(date_str, label_style)],
+        [Paragraph('<b>Horaire :</b>', label_style), Paragraph(str(horaire), label_style),
+         Paragraph('<b>Salle :</b>', label_style), Paragraph(str(salle), label_style)],
+    ]
+    info_table = Table(info_data, colWidths=[3.2*cm, 6*cm, 3.2*cm, 5.1*cm])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f0f2ff')),
+        ('FONTSIZE', (0,0), (-1,-1), 9),
+        ('TOPPADDING', (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#c5cae9')),
+        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.HexColor('#f0f2ff'), colors.HexColor('#e8eaf6')]),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 10))
+
+    # ── Tableau présences ──
+    nb_et = len(etudiants_df)
+
+    # Build header row with legend
+    PRESENT_CHAR = "P"
+    ABSENT_CHAR  = "A"
+    RETARD_CHAR  = "R"
+    EXCUSE_CHAR  = "E"
+
+    headers = ['N°', 'Nom et Prénom', 'Statut', 'Signature']
+    table_data = [headers]
+
+    has_data = bool(presences_dict)
+
+    for i, (_, row) in enumerate(etudiants_df.iterrows(), 1):
+        et_id = row.get('ID', '')
+        nom_complet = f"{row.get('Prénom', '')} {row.get('Nom', '')}"
+        statut = presences_dict.get(str(et_id), '')
+
+        if statut == 'Présent':
+            statut_display = PRESENT_CHAR
+        elif statut == 'Absent':
+            statut_display = ABSENT_CHAR
+        elif statut == 'Retard':
+            statut_display = RETARD_CHAR
+        elif statut == 'Excusé':
+            statut_display = EXCUSE_CHAR
+        else:
+            statut_display = ''   # blank box for manual fill
+
+        table_data.append([str(i), nom_complet, statut_display, ''])
+
+    row_h = 1.1*cm
+    col_widths = [1.2*cm, 9*cm, 2.5*cm, 4.8*cm]
+    t = Table(table_data, colWidths=col_widths, rowHeights=[0.8*cm] + [row_h]*nb_et, repeatRows=1)
+
+    style_cmds = [
+        # Header
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('ALIGN', (0,0), (-1,0), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        # Data
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+        ('ALIGN', (0,1), (0,-1), 'CENTER'),   # N°
+        ('ALIGN', (2,1), (2,-1), 'CENTER'),   # Statut
+        ('ALIGN', (3,1), (3,-1), 'CENTER'),   # Signature
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#9e9e9e')),
+        ('LEFTPADDING', (1,1), (1,-1), 6),
+    ]
+
+    # Alternate row colors + color statut cells
+    for i in range(1, len(table_data)):
+        bg = colors.HexColor('#fafafa') if i % 2 == 0 else colors.white
+        style_cmds.append(('BACKGROUND', (0,i), (-1,i), bg))
+        statut_val = table_data[i][2]
+        if statut_val == PRESENT_CHAR:
+            style_cmds.append(('BACKGROUND', (2,i), (2,i), colors.HexColor('#c6f6d5')))
+            style_cmds.append(('TEXTCOLOR', (2,i), (2,i), colors.HexColor('#276749')))
+            style_cmds.append(('FONTNAME', (2,i), (2,i), 'Helvetica-Bold'))
+        elif statut_val == ABSENT_CHAR:
+            style_cmds.append(('BACKGROUND', (2,i), (2,i), colors.HexColor('#fed7d7')))
+            style_cmds.append(('TEXTCOLOR', (2,i), (2,i), colors.HexColor('#c53030')))
+            style_cmds.append(('FONTNAME', (2,i), (2,i), 'Helvetica-Bold'))
+        elif statut_val == RETARD_CHAR:
+            style_cmds.append(('BACKGROUND', (2,i), (2,i), colors.HexColor('#feebc8')))
+            style_cmds.append(('TEXTCOLOR', (2,i), (2,i), colors.HexColor('#7b341e')))
+            style_cmds.append(('FONTNAME', (2,i), (2,i), 'Helvetica-Bold'))
+        elif statut_val == EXCUSE_CHAR:
+            style_cmds.append(('BACKGROUND', (2,i), (2,i), colors.HexColor('#e9d8fd')))
+            style_cmds.append(('TEXTCOLOR', (2,i), (2,i), colors.HexColor('#553c9a')))
+            style_cmds.append(('FONTNAME', (2,i), (2,i), 'Helvetica-Bold'))
+
+    t.setStyle(TableStyle(style_cmds))
+    story.append(t)
+    story.append(Spacer(1, 10))
+
+    # ── Légende ──
+    legend_style = ParagraphStyle('leg', fontSize=8, fontName='Helvetica', textColor=colors.HexColor('#555'))
+    story.append(Paragraph(
+        "<b>Légende :</b>  P = Présent   |   A = Absent   |   R = Retard   |   E = Excusé",
+        legend_style))
+    story.append(Spacer(1, 14))
+
+    # ── Stats si données ──
+    if has_data and nb_et > 0:
+        vals = list(presences_dict.values())
+        nb_p = vals.count('Présent')
+        nb_a = vals.count('Absent')
+        nb_r = vals.count('Retard')
+        nb_e = vals.count('Excusé')
+        taux = round(nb_p / nb_et * 100) if nb_et else 0
+
+        stat_data = [
+            ['Présents', 'Absents', 'Retards', 'Excusés', 'Taux de présence'],
+            [str(nb_p), str(nb_a), str(nb_r), str(nb_e), f'{taux} %'],
+        ]
+        st_table = Table(stat_data, colWidths=[3.5*cm]*5)
+        st_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#667eea')),
+            ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 9),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,1), (-1,1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,1), (-1,1), 12),
+            ('BACKGROUND', (0,1), (0,1), colors.HexColor('#c6f6d5')),
+            ('BACKGROUND', (1,1), (1,1), colors.HexColor('#fed7d7')),
+            ('BACKGROUND', (2,1), (2,1), colors.HexColor('#feebc8')),
+            ('BACKGROUND', (3,1), (3,1), colors.HexColor('#e9d8fd')),
+            ('BACKGROUND', (4,1), (4,1), colors.HexColor('#bee3f8')),
+            ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#cccccc')),
+            ('TOPPADDING', (0,0), (-1,-1), 7),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 7),
+        ]))
+        story.append(st_table)
+        story.append(Spacer(1, 14))
+
+    # ── Signatures ──
+    sig_data = [
+        ['Signature du Professeur', 'Visa Direction / Administration'],
+        ['\n\n\n\n', '\n\n\n\n'],
+    ]
+    sig_table = Table(sig_data, colWidths=[8.75*cm, 8.75*cm])
+    sig_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#e8eaf6')),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#9e9e9e')),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(sig_table)
+
+    # ── Footer ──
+    story.append(Spacer(1, 10))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor('#cccccc'), spaceAfter=4))
+    footer_style = ParagraphStyle('footer', fontSize=7, textColor=colors.HexColor('#999'), alignment=TA_CENTER)
+    story.append(Paragraph(
+        f"Futuro Skills Academy — Feuille de présence confidentielle — Imprimée le {datetime.now().strftime('%d/%m/%Y à %H:%M')}",
+        footer_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+# ─── PAGE : PRÉSENCES ─────────────────────────────────────────────────────────
+def page_presences():
+    st.markdown(
+        '<div class="main-title"><h1>📅 Feuille de Présence</h1>'
+        '<p>Marquer les présences par séance et générer le PDF officiel</p></div>',
+        unsafe_allow_html=True)
+
+    df_groupes  = read_sheet("Groupes")
+    df_etudiants = read_sheet("Étudiants")
+    df_presences = read_sheet("Présences")
+
+    if df_groupes.empty:
+        st.warning("⚠️ Aucun groupe créé. Créez d'abord des groupes.")
+        return
+
+    tab1, tab2, tab3 = st.tabs(["✅ Saisir une Séance", "📊 Historique", "🖨️ Imprimer PDF"])
+
+    # ── TAB 1 : SAISIE ──────────────────────────────────────────────────────────
+    with tab1:
+        st.markdown('<div class="section-header">✅ Saisie des présences d\'une séance</div>',
+                    unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            groupe_sel = st.selectbox(
+                "Groupe *",
+                df_groupes['Nom Groupe'].tolist() if 'Nom Groupe' in df_groupes.columns else [],
+                key="pr_groupe")
+        with col2:
+            date_seance = st.date_input("Date de la séance *", value=date.today(), key="pr_date")
+        with col3:
+            # Auto-compute séance number
+            if not df_presences.empty and 'Groupe' in df_presences.columns and 'Date Séance' in df_presences.columns:
+                seances_du_groupe = df_presences[df_presences['Groupe'] == groupe_sel]
+                dates_uniques = seances_du_groupe['Date Séance'].dropna().unique()
+                num_auto = len(dates_uniques) + 1
+            else:
+                num_auto = 1
+            num_seance = st.number_input("N° de séance", min_value=1, value=num_auto, key="pr_num")
+
+        # Infos groupe
+        grp_info = None
+        if not df_groupes.empty and groupe_sel:
+            rows = df_groupes[df_groupes['Nom Groupe'] == groupe_sel]
+            grp_info = rows.iloc[0] if not rows.empty else None
+        professeur = grp_info.get('Professeur', '') if grp_info is not None else ''
+        horaire    = grp_info.get('Horaire', '')    if grp_info is not None else ''
+        salle      = grp_info.get('Salle', '')      if grp_info is not None else ''
+
+        st.info(f"👨‍🏫 Professeur : **{professeur}** &nbsp;|&nbsp; 🕐 Horaire : **{horaire}** &nbsp;|&nbsp; 🏫 Salle : **{salle}**")
+
+        # Étudiants du groupe
+        etudiants_grp = pd.DataFrame()
+        if not df_etudiants.empty and 'Groupe' in df_etudiants.columns:
+            etudiants_grp = df_etudiants[df_etudiants['Groupe'] == groupe_sel].reset_index(drop=True)
+
+        if etudiants_grp.empty:
+            st.warning("Aucun étudiant inscrit dans ce groupe.")
+        else:
+            st.markdown(f"**{len(etudiants_grp)} étudiant(s) — Marquez les présences :**")
+            st.markdown("---")
+
+            # Check if already saved for this date+group
+            already_saved = False
+            if not df_presences.empty and 'Groupe' in df_presences.columns and 'Date Séance' in df_presences.columns:
+                existing = df_presences[
+                    (df_presences['Groupe'] == groupe_sel) &
+                    (df_presences['Date Séance'].astype(str) == str(date_seance))
+                ]
+                already_saved = not existing.empty
+
+            if already_saved:
+                st.success("✅ La présence de cette séance a déjà été enregistrée. Vous pouvez la consulter dans l'onglet Historique.")
+
+            # Build presence form
+            presences_saisies = {}
+            comments_saisies = {}
+
+            STATUTS = ["Présent", "Absent", "Retard", "Excusé"]
+            ICONS   = {"Présent": "🟢", "Absent": "🔴", "Retard": "🟡", "Excusé": "🟣"}
+
+            # Pre-fill if already saved
+            prefill = {}
+            if already_saved and not existing.empty and 'ID Étudiant' in existing.columns:
+                for _, pr in existing.iterrows():
+                    prefill[str(pr.get('ID Étudiant', ''))] = pr.get('Statut', 'Présent')
+
+            header_cols = st.columns([0.5, 3, 2, 3])
+            header_cols[0].markdown("**N°**")
+            header_cols[1].markdown("**Nom & Prénom**")
+            header_cols[2].markdown("**Statut**")
+            header_cols[3].markdown("**Commentaire**")
+            st.markdown("<hr style='margin:4px 0'>", unsafe_allow_html=True)
+
+            for i, (_, row) in enumerate(etudiants_grp.iterrows(), 1):
+                et_id  = str(row.get('ID', i))
+                nom    = f"{row.get('Prénom', '')} {row.get('Nom', '')}"
+                default_statut = prefill.get(et_id, "Présent")
+                def_idx = STATUTS.index(default_statut) if default_statut in STATUTS else 0
+
+                c0, c1, c2, c3 = st.columns([0.5, 3, 2, 3])
+                with c0:
+                    st.markdown(f"<div style='padding-top:8px;font-weight:600'>{i}</div>",
+                                unsafe_allow_html=True)
+                with c1:
+                    st.markdown(f"<div style='padding-top:8px'>{nom}</div>",
+                                unsafe_allow_html=True)
+                with c2:
+                    statut = st.selectbox(
+                        " ", STATUTS,
+                        index=def_idx,
+                        key=f"pres_{et_id}_{date_seance}_{groupe_sel}",
+                        label_visibility="collapsed",
+                        format_func=lambda s: f"{ICONS.get(s, '')} {s}"
+                    )
+                    presences_saisies[et_id] = statut
+                with c3:
+                    comment = st.text_input(
+                        " ", value="",
+                        key=f"comm_{et_id}_{date_seance}_{groupe_sel}",
+                        placeholder="Optionnel...",
+                        label_visibility="collapsed"
+                    )
+                    comments_saisies[et_id] = comment
+
+            st.markdown("---")
+
+            # Stats live
+            nb_p = list(presences_saisies.values()).count("Présent")
+            nb_a = list(presences_saisies.values()).count("Absent")
+            nb_r = list(presences_saisies.values()).count("Retard")
+            nb_e = list(presences_saisies.values()).count("Excusé")
+            taux = round(nb_p / len(etudiants_grp) * 100) if len(etudiants_grp) > 0 else 0
+
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("🟢 Présents", nb_p)
+            m2.metric("🔴 Absents", nb_a)
+            m3.metric("🟡 Retards", nb_r)
+            m4.metric("🟣 Excusés", nb_e)
+            m5.metric("📊 Taux", f"{taux}%")
+
+            st.markdown("---")
+            btn_save, btn_pdf = st.columns(2)
+
+            with btn_save:
+                if st.button("💾 Enregistrer les Présences", use_container_width=True, type="primary"):
+                    # Delete existing records for this date+group first (overwrite)
+                    wb = get_wb()
+                    ws_pr = wb["Présences"]
+                    rows_to_delete = []
+                    headers_pr = [c.value for c in ws_pr[1]]
+                    if 'Groupe' in headers_pr and 'Date Séance' in headers_pr:
+                        gi = headers_pr.index('Groupe') + 1
+                        di = headers_pr.index('Date Séance') + 1
+                        for r in ws_pr.iter_rows(min_row=2):
+                            if str(r[gi-1].value) == groupe_sel and str(r[di-1].value) == str(date_seance):
+                                rows_to_delete.append(r[0].row)
+                    for rn in sorted(rows_to_delete, reverse=True):
+                        ws_pr.delete_rows(rn)
+                    save_wb(wb)
+
+                    # Append new records
+                    df_pr_cur = read_sheet("Présences")
+                    for et_id, statut in presences_saisies.items():
+                        et_row = etudiants_grp[etudiants_grp['ID'].astype(str) == et_id]
+                        nom_et = f"{et_row.iloc[0]['Prénom']} {et_row.iloc[0]['Nom']}" if not et_row.empty else et_id
+                        new_id = next_id(df_pr_cur, "ID")
+                        append_row("Présences", [
+                            new_id, groupe_sel, professeur,
+                            str(date_seance), int(num_seance),
+                            int(et_id) if et_id.isdigit() else et_id,
+                            nom_et, statut, comments_saisies.get(et_id, '')
+                        ])
+                        df_pr_cur = read_sheet("Présences")  # refresh id counter
+                    st.success(f"✅ Présences du {date_seance.strftime('%d/%m/%Y')} enregistrées pour '{groupe_sel}' !")
+                    st.rerun()
+
+            with btn_pdf:
+                if st.button("🖨️ Générer PDF Séance", use_container_width=True):
+                    pdf_buf = generate_pdf_presence(
+                        groupe_sel, professeur, date_seance, num_seance,
+                        horaire, salle, etudiants_grp, presences_saisies)
+                    st.download_button(
+                        "⬇️ Télécharger la Feuille de Présence",
+                        pdf_buf,
+                        file_name=f"presence_{groupe_sel.replace(' ','_')}_{date_seance}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True)
+
+    # ── TAB 2 : HISTORIQUE ───────────────────────────────────────────────────────
+    with tab2:
+        st.markdown('<div class="section-header">📊 Historique des Présences</div>',
+                    unsafe_allow_html=True)
+
+        df_pr = read_sheet("Présences")
+        if df_pr.empty:
+            st.info("Aucune présence enregistrée.")
+        else:
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                groupes_list = df_pr['Groupe'].dropna().unique().tolist() if 'Groupe' in df_pr.columns else []
+                filtre_g = st.selectbox("Filtrer par groupe", ["Tous"] + groupes_list, key="hist_g")
+            with col_f2:
+                filtre_statut = st.selectbox("Filtrer par statut",
+                                             ["Tous", "Présent", "Absent", "Retard", "Excusé"], key="hist_s")
+
+            filtered = df_pr.copy()
+            if filtre_g != "Tous":
+                filtered = filtered[filtered['Groupe'] == filtre_g]
+            if filtre_statut != "Tous" and 'Statut' in filtered.columns:
+                filtered = filtered[filtered['Statut'] == filtre_statut]
+
+            st.markdown(f"**{len(filtered)} enregistrement(s)**")
+
+            if 'Statut' in filtered.columns:
+                def color_pr(val):
+                    if val == 'Présent': return 'background-color:#c6f6d5;color:#276749'
+                    elif val == 'Absent': return 'background-color:#fed7d7;color:#9b2c2c'
+                    elif val == 'Retard': return 'background-color:#feebc8;color:#7b341e'
+                    elif val == 'Excusé': return 'background-color:#e9d8fd;color:#553c9a'
+                    return ''
+                st.dataframe(filtered.style.applymap(color_pr, subset=['Statut']),
+                             use_container_width=True, height=400)
+            else:
+                st.dataframe(filtered, use_container_width=True, height=400)
+
+            # Taux de présence par groupe
+            if not df_pr.empty and 'Groupe' in df_pr.columns and 'Statut' in df_pr.columns:
+                st.markdown("---")
+                st.markdown('<div class="section-header">📈 Taux de Présence par Groupe</div>',
+                            unsafe_allow_html=True)
+                taux_data = {}
+                for g in df_pr['Groupe'].dropna().unique():
+                    g_df = df_pr[df_pr['Groupe'] == g]
+                    total = len(g_df)
+                    presnt = len(g_df[g_df['Statut'] == 'Présent'])
+                    taux_data[g] = round(presnt / total * 100, 1) if total > 0 else 0
+                taux_series = pd.Series(taux_data, name="Taux de présence (%)")
+                st.bar_chart(taux_series)
+
+            # Export
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as w:
+                filtered.to_excel(w, index=False)
+            buf.seek(0)
+            st.download_button("⬇️ Exporter Historique (Excel)", buf,
+                               file_name="presences_futuro.xlsx",
+                               mime="application/vnd.ms-excel")
+
+    # ── TAB 3 : IMPRESSION PDF ───────────────────────────────────────────────────
+    with tab3:
+        st.markdown('<div class="section-header">🖨️ Imprimer une Feuille de Présence</div>',
+                    unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            grp_pdf = st.selectbox(
+                "Groupe",
+                df_groupes['Nom Groupe'].tolist() if 'Nom Groupe' in df_groupes.columns else [],
+                key="pdf_pr_grp")
+        with col2:
+            mode_pdf = st.radio("Type de feuille",
+                                ["🖊️ Vierge (à remplir manuellement)", "📋 Pré-remplie (depuis historique)"],
+                                key="pdf_mode")
+
+        grp_pdf_info = df_groupes[df_groupes['Nom Groupe'] == grp_pdf].iloc[0] \
+            if not df_groupes.empty and grp_pdf else None
+        prof_pdf  = grp_pdf_info.get('Professeur', '') if grp_pdf_info is not None else ''
+        hor_pdf   = grp_pdf_info.get('Horaire', '')   if grp_pdf_info is not None else ''
+        salle_pdf = grp_pdf_info.get('Salle', '')     if grp_pdf_info is not None else ''
+
+        col3, col4 = st.columns(2)
+        with col3:
+            date_pdf = st.date_input("Date de la séance", value=date.today(), key="pdf_date")
+        with col4:
+            num_pdf = st.number_input("N° séance", min_value=1, value=1, key="pdf_num")
+
+        # Étudiants du groupe
+        et_grp_pdf = pd.DataFrame()
+        if not df_etudiants.empty and 'Groupe' in df_etudiants.columns:
+            et_grp_pdf = df_etudiants[df_etudiants['Groupe'] == grp_pdf].reset_index(drop=True)
+
+        presences_pdf = {}
+        if "Pré-remplie" in mode_pdf:
+            df_pr2 = read_sheet("Présences")
+            if not df_pr2.empty and 'Groupe' in df_pr2.columns and 'Date Séance' in df_pr2.columns:
+                existing2 = df_pr2[
+                    (df_pr2['Groupe'] == grp_pdf) &
+                    (df_pr2['Date Séance'].astype(str) == str(date_pdf))
+                ]
+                if not existing2.empty and 'ID Étudiant' in existing2.columns:
+                    for _, pr in existing2.iterrows():
+                        presences_pdf[str(pr.get('ID Étudiant', ''))] = pr.get('Statut', '')
+                    st.success(f"✅ {len(presences_pdf)} présence(s) chargées depuis l'historique.")
+                else:
+                    st.warning("Aucune présence trouvée pour cette date et ce groupe. Le PDF sera vierge.")
+
+        st.markdown(f"**{len(et_grp_pdf)} étudiant(s) dans ce groupe**")
+
+        st.markdown("---")
+        if st.button("🖨️ Générer la Feuille de Présence PDF", use_container_width=True, type="primary"):
+            if et_grp_pdf.empty:
+                st.error("Aucun étudiant dans ce groupe.")
+            else:
+                with st.spinner("Génération du PDF..."):
+                    pdf_buf = generate_pdf_presence(
+                        grp_pdf, prof_pdf, date_pdf, num_pdf,
+                        hor_pdf, salle_pdf, et_grp_pdf, presences_pdf)
+                st.success("✅ PDF généré !")
+                st.download_button(
+                    "⬇️ Télécharger la Feuille de Présence",
+                    pdf_buf,
+                    file_name=f"presence_{grp_pdf.replace(' ','_')}_{date_pdf}_S{num_pdf}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True)
+
+
+# ─── Navigation ───────────────────────────────────────────────────────────────
+def sidebar_nav():
+    st.sidebar.markdown("""
+    <div style='text-align:center; padding: 20px 0 10px 0'>
+        <div style='font-size:3rem'>🎓</div>
+        <div style='font-size:1.3rem; font-weight:800; color:white'>Futuro Skills</div>
+        <div style='font-size:0.85rem; opacity:0.7; color:#aaa'>Academy Management</div>
+    </div>
+    <hr style='border-color: rgba(255,255,255,0.2); margin: 10px 0'>
+    """, unsafe_allow_html=True)
+
+    menu_items = {
+        "🏠 Tableau de Bord": "dashboard",
+        "👨‍🎓 Étudiants": "etudiants",
+        "📋 Inscriptions": "inscriptions",
+        "👨‍🏫 Professeurs": "professeurs",
+        "📚 Groupes": "groupes",
+        "💰 Paiements": "paiements",
+        "📅 Feuille de Présence": "presences",
+        "🔔 Alertes": "alertes",
+        "📄 Impression PDF": "pdf",
+    }
+    
+    if "page" not in st.session_state:
+        st.session_state.page = "dashboard"
+
+    for label, key in menu_items.items():
+        is_active = st.session_state.page == key
+        btn_style = "primary" if is_active else "secondary"
+        if st.sidebar.button(label, key=f"nav_{key}", use_container_width=True, type=btn_style):
+            st.session_state.page = key
+            st.rerun()
+
+    st.sidebar.markdown("<hr style='border-color: rgba(255,255,255,0.2)'>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<div style='font-size:0.75rem; opacity:0.5; text-align:center'>v1.0 — {datetime.now().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
+
+# ─── PAGE : DASHBOARD ──────────────────────────────────────────────────────────
+def page_dashboard():
+    st.markdown("""
+    <div class="main-title">
+        <h1>🎓 Futuro Skills Academy</h1>
+        <p>Système de Gestion Scolaire — Tableau de Bord</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    df_etudiants = read_sheet("Étudiants")
+    df_groupes = read_sheet("Groupes")
+    df_profs = read_sheet("Professeurs")
+    df_paie = read_sheet("Paiements")
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    nb_et = len(df_etudiants)
+    nb_gr = len(df_groupes)
+    nb_pr = len(df_profs)
+
+    total_du = df_paie['Montant Dû'].sum() if not df_paie.empty and 'Montant Dû' in df_paie.columns else 0
+    total_paye = df_paie['Montant Payé'].sum() if not df_paie.empty and 'Montant Payé' in df_paie.columns else 0
+    
+    with c1:
+        st.metric("👨‍🎓 Étudiants", nb_et)
+    with c2:
+        st.metric("📚 Groupes", nb_gr)
+    with c3:
+        st.metric("👨‍🏫 Professeurs", nb_pr)
+    with c4:
+        st.metric("💵 Total Encaissé", f"{total_paye:,.0f} MAD")
+    with c5:
+        reste = total_du - total_paye
+        st.metric("⚠️ Reste à Payer", f"{reste:,.0f} MAD", delta=f"-{reste:,.0f}" if reste > 0 else "✓")
+
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+
     with col1:
-        st.markdown("""
-        <div class="theory-box">
-        <h3>👋 Welcome, Student!</h3>
-        
-        This is a hands-on Python course where <strong>YOU write the code</strong>.
-        
-        <h4>What you'll learn:</h4>
-        <ul>
-        <li>✅ All variable types (int, float, str, bool)</li>
-        <li>✅ Input and Output operations</li>
-        <li>✅ All arithmetic operators (+, -, *, /, //, %, **)</li>
-        <li>✅ All comparison operators (==, !=, >, <, >=, <=)</li>
-        <li>✅ Logical operators (and, or, not)</li>
-        <li>✅ Conditions (if, elif, else)</li>
-        <li>✅ Loops (for, while, nested loops)</li>
-        <li>✅ Loop control (break, continue)</li>
-        </ul>
-        
-        <h4>How it works:</h4>
-        <ol>
-        <li>Read the theory</li>
-        <li>Complete the task by writing code</li>
-        <li>Click "Run Code" to execute</li>
-        <li>See your results!</li>
-        </ol>
-        
-        <p style="font-size: 1.2em; color: #F18F01;"><strong>👈 Start with the first lesson!</strong></p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="section-header">📊 Statut des Paiements</div>', unsafe_allow_html=True)
+        if not df_etudiants.empty and 'Statut Paiement' in df_etudiants.columns:
+            statut_counts = df_etudiants['Statut Paiement'].value_counts()
+            st.bar_chart(statut_counts)
+        else:
+            st.info("Aucune donnée disponible")
+
+    with col2:
+        st.markdown('<div class="section-header">📚 Étudiants par Groupe</div>', unsafe_allow_html=True)
+        if not df_etudiants.empty and 'Groupe' in df_etudiants.columns:
+            grp_counts = df_etudiants['Groupe'].value_counts()
+            st.bar_chart(grp_counts)
+        else:
+            st.info("Aucune donnée disponible")
+
+    st.markdown('<div class="section-header">🔔 Alertes de Paiement Récentes</div>', unsafe_allow_html=True)
+    if not df_etudiants.empty and 'Statut Paiement' in df_etudiants.columns:
+        impayes = df_etudiants[df_etudiants['Statut Paiement'] == 'Impayé']
+        if not impayes.empty:
+            for _, row in impayes.head(5).iterrows():
+                nom = f"{row.get('Prénom','')} {row.get('Nom','')}"
+                grp = row.get('Groupe', 'N/A')
+                st.markdown(f"""
+                <div class="alert-danger">
+                    ⚠️ <b>{nom}</b> — Groupe : {grp} — Paiement en attente
+                </div>""", unsafe_allow_html=True)
+        else:
+            st.success("✅ Tous les étudiants sont à jour dans leurs paiements !")
+    else:
+        st.info("Enregistrez des étudiants pour voir les alertes.")
+
+# ─── PAGE : ÉTUDIANTS ──────────────────────────────────────────────────────────
+def page_etudiants():
+    st.markdown('<div class="main-title"><h1>👨‍🎓 Gestion des Étudiants</h1><p>CRUD complet — Données stockées dans Excel</p></div>', unsafe_allow_html=True)
+
+    df_groupes = read_sheet("Groupes")
+    groupes_list = df_groupes['Nom Groupe'].tolist() if not df_groupes.empty and 'Nom Groupe' in df_groupes.columns else []
+
+    tab1, tab2, tab3 = st.tabs(["📋 Liste des Étudiants", "➕ Nouvel Étudiant", "✏️ Modifier / Supprimer"])
+
+    with tab1:
+        df = read_sheet("Étudiants")
+        if df.empty:
+            st.info("Aucun étudiant enregistré.")
+        else:
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                search = st.text_input("🔍 Rechercher", placeholder="Nom, prénom, email...")
+            with col_f2:
+                filtre_grp = st.selectbox("Filtrer par groupe", ["Tous"] + groupes_list)
+            
+            filtered = df.copy()
+            if search:
+                mask = filtered.apply(lambda r: search.lower() in str(r).lower(), axis=1)
+                filtered = filtered[mask]
+            if filtre_grp != "Tous" and 'Groupe' in filtered.columns:
+                filtered = filtered[filtered['Groupe'] == filtre_grp]
+            
+            st.markdown(f"**{len(filtered)} étudiant(s) trouvé(s)**")
+            
+            if 'Statut Paiement' in filtered.columns:
+                def color_statut(val):
+                    if val == 'Payé': return 'background-color: #c6f6d5; color: #276749'
+                    elif val == 'Impayé': return 'background-color: #fed7d7; color: #9b2c2c'
+                    return 'background-color: #feebc8; color: #7b341e'
+                st.dataframe(filtered.style.applymap(color_statut, subset=['Statut Paiement']),
+                             use_container_width=True, height=400)
+            else:
+                st.dataframe(filtered, use_container_width=True, height=400)
+
+    with tab2:
+        st.markdown('<div class="section-header">➕ Formulaire d\'Inscription</div>', unsafe_allow_html=True)
+        with st.form("form_etudiant", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                prenom = st.text_input("Prénom *")
+                email = st.text_input("Email *")
+                dob = st.date_input("Date de Naissance", value=date(2000,1,1))
+                groupe = st.selectbox("Groupe *", ["-- Choisir --"] + groupes_list)
+            with c2:
+                nom = st.text_input("Nom *")
+                tel = st.text_input("Téléphone *")
+                adresse = st.text_area("Adresse", height=80)
+                frais = st.number_input("Frais de Formation (MAD)", min_value=0, value=3000, step=100)
+
+            statut_paie = st.selectbox("Statut Paiement", ["Impayé", "Partiel", "Payé"])
+            submitted = st.form_submit_button("✅ Inscrire l'Étudiant", use_container_width=True, type="primary")
+
+            if submitted:
+                if not prenom or not nom or not email or groupe == "-- Choisir --":
+                    st.error("Veuillez remplir tous les champs obligatoires (*)")
+                else:
+                    df_ex = read_sheet("Étudiants")
+                    new_id = next_id(df_ex, "ID")
+                    row = [new_id, prenom, nom, email, tel, str(dob), adresse, groupe,
+                           str(date.today()), frais, statut_paie]
+                    append_row("Étudiants", row)
+
+                    # Aussi dans Inscriptions
+                    df_insc = read_sheet("Inscriptions")
+                    df_pr = read_sheet("Professeurs")
+                    prof_nom = ""
+                    if not df_groupes.empty and 'Nom Groupe' in df_groupes.columns:
+                        grp_row = df_groupes[df_groupes['Nom Groupe'] == groupe]
+                        if not grp_row.empty:
+                            prof_nom = grp_row.iloc[0].get('Professeur', '')
+
+                    insc_id = next_id(df_insc, "ID Inscription")
+                    append_row("Inscriptions", [insc_id, new_id, f"{prenom} {nom}", groupe,
+                                                prof_nom, str(date.today()), frais, statut_paie])
+                    st.success(f"✅ {prenom} {nom} a été inscrit avec succès ! (ID: {new_id})")
+                    st.balloons()
+
+    with tab3:
+        df = read_sheet("Étudiants")
+        if df.empty:
+            st.info("Aucun étudiant à modifier.")
+        else:
+            if 'ID' in df.columns and 'Prénom' in df.columns and 'Nom' in df.columns:
+                opts = {f"[{r['ID']}] {r['Prénom']} {r['Nom']}": r['ID'] for _, r in df.iterrows()}
+                selected_label = st.selectbox("Sélectionner un étudiant", list(opts.keys()))
+                selected_id = opts[selected_label]
+                row_data = df[df['ID'] == selected_id].iloc[0]
+
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    new_prenom = st.text_input("Prénom", value=str(row_data.get('Prénom','')))
+                    new_email = st.text_input("Email", value=str(row_data.get('Email','')))
+                    new_groupe = st.selectbox("Groupe", groupes_list if groupes_list else [""],
+                                              index=groupes_list.index(row_data.get('Groupe','')) if row_data.get('Groupe','') in groupes_list else 0)
+                with col_b:
+                    new_nom = st.text_input("Nom", value=str(row_data.get('Nom','')))
+                    new_tel = st.text_input("Téléphone", value=str(row_data.get('Téléphone','')))
+                    statuts = ["Impayé", "Partiel", "Payé"]
+                    cur_stat = row_data.get('Statut Paiement', 'Impayé')
+                    new_stat = st.selectbox("Statut Paiement", statuts,
+                                            index=statuts.index(cur_stat) if cur_stat in statuts else 0)
+
+                c_upd, c_del = st.columns(2)
+                with c_upd:
+                    if st.button("💾 Enregistrer les modifications", use_container_width=True, type="primary"):
+                        update_row("Étudiants", "ID", selected_id, {
+                            "Prénom": new_prenom, "Nom": new_nom, "Email": new_email,
+                            "Téléphone": new_tel, "Groupe": new_groupe, "Statut Paiement": new_stat
+                        })
+                        st.success("✅ Étudiant mis à jour !")
+                        st.rerun()
+                with c_del:
+                    if st.button("🗑️ Supprimer l'étudiant", use_container_width=True):
+                        delete_row("Étudiants", "ID", selected_id)
+                        st.warning(f"⚠️ Étudiant {selected_label} supprimé.")
+                        st.rerun()
+
+# ─── PAGE : GROUPES ────────────────────────────────────────────────────────────
+def page_groupes():
+    st.markdown('<div class="main-title"><h1>📚 Gestion des Groupes</h1><p>Créer, modifier et organiser les groupes de formation</p></div>', unsafe_allow_html=True)
+
+    df_profs = read_sheet("Professeurs")
+    profs_list = []
+    if not df_profs.empty and 'Prénom' in df_profs.columns and 'Nom' in df_profs.columns:
+        profs_list = [f"{r['Prénom']} {r['Nom']}" for _, r in df_profs.iterrows()]
+
+    tab1, tab2 = st.tabs(["📋 Liste des Groupes", "➕ Nouveau Groupe"])
+
+    with tab1:
+        df = read_sheet("Groupes")
+        if df.empty:
+            st.info("Aucun groupe créé.")
+        else:
+            st.dataframe(df, use_container_width=True, height=400)
+            st.markdown("---")
+            st.markdown("**Modifier / Supprimer un groupe**")
+            if 'ID Groupe' in df.columns and 'Nom Groupe' in df.columns:
+                opts = {f"[{r['ID Groupe']}] {r['Nom Groupe']}": r['ID Groupe'] for _, r in df.iterrows()}
+                sel = st.selectbox("Sélectionner", list(opts.keys()), key="grp_sel")
+                sel_id = opts[sel]
+                row = df[df['ID Groupe'] == sel_id].iloc[0]
+
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    new_nom = st.text_input("Nom Groupe", value=str(row.get('Nom Groupe','')))
+                    new_prof = st.selectbox("Professeur", profs_list,
+                                            index=profs_list.index(row.get('Professeur','')) if row.get('Professeur','') in profs_list else 0)
+                with c2:
+                    new_niveau = st.text_input("Niveau", value=str(row.get('Niveau','')))
+                    new_horaire = st.text_input("Horaire", value=str(row.get('Horaire','')))
+                with c3:
+                    new_frais = st.number_input("Frais (MAD)", value=float(row.get('Frais', 0) or 0), step=100.0)
+                    new_cap = st.number_input("Capacité Max", value=int(row.get('Capacité Max', 20) or 20), step=1)
+
+                col_u, col_d = st.columns(2)
+                with col_u:
+                    if st.button("💾 Mettre à jour", use_container_width=True, type="primary"):
+                        update_row("Groupes", "ID Groupe", sel_id, {
+                            "Nom Groupe": new_nom, "Professeur": new_prof,
+                            "Niveau": new_niveau, "Horaire": new_horaire,
+                            "Frais": new_frais, "Capacité Max": new_cap
+                        })
+                        st.success("✅ Groupe mis à jour !")
+                        st.rerun()
+                with col_d:
+                    if st.button("🗑️ Supprimer", use_container_width=True):
+                        delete_row("Groupes", "ID Groupe", sel_id)
+                        st.warning("Groupe supprimé.")
+                        st.rerun()
+
+    with tab2:
+        st.markdown('<div class="section-header">➕ Créer un Nouveau Groupe</div>', unsafe_allow_html=True)
+        with st.form("form_groupe", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                nom_grp = st.text_input("Nom du Groupe *")
+                niveau = st.selectbox("Niveau", ["Débutant", "Intermédiaire", "Avancé", "Expert"])
+                date_debut = st.date_input("Date de Début")
+                frais_grp = st.number_input("Frais (MAD)", min_value=0, value=3000, step=100)
+            with c2:
+                prof = st.selectbox("Professeur *", ["-- Choisir --"] + profs_list)
+                horaire = st.text_input("Horaire", placeholder="Ex: Lun-Mer 18h-20h")
+                date_fin = st.date_input("Date de Fin")
+                capacite = st.number_input("Capacité Max", min_value=1, value=20)
+            salle = st.text_input("Salle / Lien Zoom")
+
+            sub = st.form_submit_button("✅ Créer le Groupe", use_container_width=True, type="primary")
+            if sub:
+                if not nom_grp or prof == "-- Choisir --":
+                    st.error("Nom du groupe et professeur obligatoires.")
+                else:
+                    df_ex = read_sheet("Groupes")
+                    new_id = next_id(df_ex, "ID Groupe")
+                    append_row("Groupes", [new_id, nom_grp, prof, niveau, horaire, salle,
+                                           str(date_debut), str(date_fin), frais_grp, capacite, 0])
+                    st.success(f"✅ Groupe '{nom_grp}' créé avec succès !")
+                    st.rerun()
+
+# ─── PAGE : PROFESSEURS ────────────────────────────────────────────────────────
+def page_professeurs():
+    st.markdown('<div class="main-title"><h1>👨‍🏫 Gestion des Professeurs</h1><p>Gérer les formateurs et leurs commissions</p></div>', unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["📋 Liste des Professeurs", "➕ Nouveau Professeur"])
+
+    with tab1:
+        df = read_sheet("Professeurs")
+        df_paie = read_sheet("Paiements")
+        df_etudiants = read_sheet("Étudiants")
+        df_groupes = read_sheet("Groupes")
+
+        if df.empty:
+            st.info("Aucun professeur enregistré.")
+        else:
+            st.dataframe(df, use_container_width=True)
+
+            st.markdown('<div class="section-header">💰 Calcul des Commissions</div>', unsafe_allow_html=True)
+            for _, prof_row in df.iterrows():
+                prof_nom = f"{prof_row.get('Prénom','')} {prof_row.get('Nom','')}"
+                
+                total_comm = 0
+                if not df_groupes.empty and 'Professeur' in df_groupes.columns:
+                    groupes_prof = df_groupes[df_groupes['Professeur'] == prof_nom]['Nom Groupe'].tolist()
+                    if not df_paie.empty and 'Groupe' in df_paie.columns and 'Montant Payé' in df_paie.columns:
+                        for g in groupes_prof:
+                            montant_g = df_paie[df_paie['Groupe'] == g]['Montant Payé'].sum()
+                            total_comm += montant_g * 0.50
+
+                with st.expander(f"👨‍🏫 {prof_nom} — Commission estimée : {total_comm:,.0f} MAD"):
+                    if not df_groupes.empty and 'Professeur' in df_groupes.columns:
+                        groupes_p = df_groupes[df_groupes['Professeur'] == prof_nom]
+                        if not groupes_p.empty:
+                            st.write("**Groupes assignés :**")
+                            for _, g in groupes_p.iterrows():
+                                nb_et = len(df_etudiants[df_etudiants['Groupe'] == g['Nom Groupe']]) if not df_etudiants.empty and 'Groupe' in df_etudiants.columns else 0
+                                st.markdown(f"- 📚 **{g.get('Nom Groupe','')}** — {nb_et} étudiant(s) — {g.get('Horaire','')}")
+
+    with tab2:
+        st.markdown('<div class="section-header">➕ Ajouter un Professeur</div>', unsafe_allow_html=True)
+        with st.form("form_prof", clear_on_submit=True):
+            c1, c2 = st.columns(2)
+            with c1:
+                p_prenom = st.text_input("Prénom *")
+                p_email = st.text_input("Email *")
+                p_spec = st.text_input("Spécialité", placeholder="Ex: Développement Web, Comptabilité...")
+            with c2:
+                p_nom = st.text_input("Nom *")
+                p_tel = st.text_input("Téléphone")
+                p_taux = st.number_input("Taux Commission (%)", min_value=0, max_value=100, value=50)
+
+            sub = st.form_submit_button("✅ Ajouter le Professeur", use_container_width=True, type="primary")
+            if sub:
+                if not p_prenom or not p_nom or not p_email:
+                    st.error("Prénom, Nom et Email obligatoires.")
+                else:
+                    df_ex = read_sheet("Professeurs")
+                    new_id = next_id(df_ex, "ID")
+                    append_row("Professeurs", [new_id, p_prenom, p_nom, p_email, p_tel, p_spec, p_taux, ""])
+                    st.success(f"✅ Prof. {p_prenom} {p_nom} ajouté !")
+                    st.rerun()
+
+# ─── PAGE : PAIEMENTS ─────────────────────────────────────────────────────────
+def page_paiements():
+    st.markdown('<div class="main-title"><h1>💰 Gestion des Paiements</h1><p>Enregistrer et suivre les paiements des étudiants</p></div>', unsafe_allow_html=True)
+
+    df_etudiants = read_sheet("Étudiants")
+
+    tab1, tab2 = st.tabs(["📋 Historique Paiements", "➕ Enregistrer un Paiement"])
+
+    with tab1:
+        df = read_sheet("Paiements")
+        if df.empty:
+            st.info("Aucun paiement enregistré.")
+        else:
+            col1, col2, col3 = st.columns(3)
+            total_paie = df['Montant Payé'].sum() if 'Montant Payé' in df.columns else 0
+            total_du = df['Montant Dû'].sum() if 'Montant Dû' in df.columns else 0
+            with col1:
+                st.metric("💵 Total Encaissé", f"{total_paie:,.0f} MAD")
+            with col2:
+                st.metric("📋 Total Dû", f"{total_du:,.0f} MAD")
+            with col3:
+                st.metric("⚠️ Solde Restant", f"{total_du - total_paie:,.0f} MAD")
+            
+            st.dataframe(df, use_container_width=True, height=400)
+
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+                df.write_excel(writer) if hasattr(df, 'write_excel') else df.to_excel(writer, index=False)
+            buf.seek(0)
+            st.download_button("⬇️ Exporter les paiements (Excel)", buf,
+                               file_name="paiements_futuro.xlsx", mime="application/vnd.ms-excel")
+
+    with tab2:
+        st.markdown('<div class="section-header">➕ Enregistrer un Paiement</div>', unsafe_allow_html=True)
+        if df_etudiants.empty:
+            st.warning("Aucun étudiant enregistré. Ajoutez des étudiants d'abord.")
+        else:
+            opts = {}
+            if 'ID' in df_etudiants.columns and 'Prénom' in df_etudiants.columns:
+                opts = {f"[{r['ID']}] {r.get('Prénom','')} {r.get('Nom','')} — {r.get('Groupe','')}": r['ID']
+                        for _, r in df_etudiants.iterrows()}
+
+            with st.form("form_paiement", clear_on_submit=True):
+                etudiant_sel = st.selectbox("Étudiant *", list(opts.keys()))
+                et_id = opts.get(etudiant_sel)
+
+                et_row = df_etudiants[df_etudiants['ID'] == et_id].iloc[0] if et_id else None
+                et_nom = f"{et_row.get('Prénom','')} {et_row.get('Nom','')}" if et_row is not None else ""
+                et_groupe = et_row.get('Groupe', '') if et_row is not None else ""
+                et_frais = float(et_row.get('Frais Total', 0) or 0) if et_row is not None else 0
+
+                st.info(f"📋 Groupe : **{et_groupe}** | Frais total : **{et_frais:,.0f} MAD**")
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    montant_paye = st.number_input("Montant Payé (MAD) *", min_value=0.0, value=et_frais, step=100.0)
+                    mode = st.selectbox("Mode de Paiement", ["Espèces", "Virement", "Chèque", "Mobile Money"])
+                with c2:
+                    montant_du = st.number_input("Montant Dû Total (MAD)", min_value=0.0, value=et_frais, step=100.0)
+                    date_paie = st.date_input("Date de Paiement", value=date.today())
+
+                statut = "Payé" if montant_paye >= montant_du else ("Partiel" if montant_paye > 0 else "Impayé")
+                st.markdown(f"**Statut calculé :** {'🟢 Payé' if statut == 'Payé' else ('🟡 Partiel' if statut == 'Partiel' else '🔴 Impayé')}")
+                notes = st.text_area("Notes", height=60)
+
+                sub = st.form_submit_button("✅ Enregistrer le Paiement", use_container_width=True, type="primary")
+                if sub:
+                    df_p = read_sheet("Paiements")
+                    new_id = next_id(df_p, "ID Paiement")
+                    append_row("Paiements", [new_id, et_id, et_nom, et_groupe,
+                                             montant_paye, montant_du, str(date_paie), mode, statut, notes])
+                    # Mettre à jour statut étudiant
+                    update_row("Étudiants", "ID", et_id, {"Statut Paiement": statut})
+                    st.success(f"✅ Paiement de {montant_paye:,.0f} MAD enregistré pour {et_nom} !")
+                    st.rerun()
+
+# ─── PAGE : INSCRIPTIONS ──────────────────────────────────────────────────────
+def page_inscriptions():
+    st.markdown('<div class="main-title"><h1>📋 Inscriptions</h1><p>Vue d\'ensemble de toutes les inscriptions</p></div>', unsafe_allow_html=True)
+
+    df = read_sheet("Inscriptions")
+    if df.empty:
+        st.info("Aucune inscription enregistrée. Les inscriptions sont créées automatiquement lors de l'ajout d'un étudiant.")
+    else:
+        c1, c2, c3 = st.columns(3)
+        with c1: st.metric("📋 Total Inscriptions", len(df))
+        with c2:
+            payees = len(df[df['Statut'] == 'Payé']) if 'Statut' in df.columns else 0
+            st.metric("✅ Payées", payees)
+        with c3:
+            impayes = len(df[df['Statut'] == 'Impayé']) if 'Statut' in df.columns else 0
+            st.metric("⚠️ Impayées", impayes)
+
+        st.markdown("---")
+        search = st.text_input("🔍 Rechercher une inscription")
+        filtered = df
+        if search:
+            mask = df.apply(lambda r: search.lower() in str(r).lower(), axis=1)
+            filtered = df[mask]
+        st.dataframe(filtered, use_container_width=True, height=500)
+
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as w:
+            filtered.to_excel(w, index=False)
+        buf.seek(0)
+        st.download_button("⬇️ Exporter (Excel)", buf, file_name="inscriptions_futuro.xlsx",
+                           mime="application/vnd.ms-excel")
+
+# ─── PAGE : ALERTES ───────────────────────────────────────────────────────────
+def page_alertes():
+    st.markdown('<div class="main-title"><h1>🔔 Alertes de Paiement</h1><p>Suivre les paiements en retard ou en attente</p></div>', unsafe_allow_html=True)
+
+    df_et = read_sheet("Étudiants")
+    df_paie = read_sheet("Paiements")
+
+    if df_et.empty:
+        st.info("Aucun étudiant enregistré.")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown('<div class="section-header">🔴 Étudiants Impayés</div>', unsafe_allow_html=True)
+        if 'Statut Paiement' in df_et.columns:
+            impayes = df_et[df_et['Statut Paiement'] == 'Impayé']
+            if impayes.empty:
+                st.success("✅ Aucun impayé !")
+            else:
+                for _, row in impayes.iterrows():
+                    nom = f"{row.get('Prénom','')} {row.get('Nom','')}"
+                    grp = row.get('Groupe', 'N/A')
+                    tel = row.get('Téléphone', 'N/A')
+                    frais = row.get('Frais Total', 0)
+                    st.markdown(f"""
+                    <div class="alert-danger">
+                        <b>🚨 {nom}</b><br>
+                        📚 Groupe: {grp} | 📞 {tel}<br>
+                        💰 Montant dû: <b>{frais:,.0f} MAD</b>
+                    </div>""", unsafe_allow_html=True)
+
+    with col2:
+        st.markdown('<div class="section-header">🟡 Paiements Partiels</div>', unsafe_allow_html=True)
+        if 'Statut Paiement' in df_et.columns:
+            partiels = df_et[df_et['Statut Paiement'] == 'Partiel']
+            if partiels.empty:
+                st.success("✅ Aucun paiement partiel !")
+            else:
+                for _, row in partiels.iterrows():
+                    nom = f"{row.get('Prénom','')} {row.get('Nom','')}"
+                    grp = row.get('Groupe', 'N/A')
+                    frais = float(row.get('Frais Total', 0) or 0)
+
+                    total_paye = 0
+                    if not df_paie.empty and 'ID Étudiant' in df_paie.columns:
+                        paiements_et = df_paie[df_paie['ID Étudiant'] == row.get('ID')]
+                        total_paye = paiements_et['Montant Payé'].sum() if not paiements_et.empty and 'Montant Payé' in paiements_et.columns else 0
+
+                    reste = frais - total_paye
+                    st.markdown(f"""
+                    <div class="alert-warning">
+                        <b>⚠️ {nom}</b><br>
+                        📚 Groupe: {grp}<br>
+                        💵 Payé: {total_paye:,.0f} MAD | Reste: <b>{reste:,.0f} MAD</b>
+                    </div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown('<div class="section-header">📊 Résumé Global</div>', unsafe_allow_html=True)
+    if 'Statut Paiement' in df_et.columns:
+        counts = df_et['Statut Paiement'].value_counts().to_dict()
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("🟢 Payés", counts.get('Payé', 0))
+        with c2:
+            st.metric("🟡 Partiels", counts.get('Partiel', 0))
+        with c3:
+            st.metric("🔴 Impayés", counts.get('Impayé', 0))
+
+# ─── PAGE : PDF ───────────────────────────────────────────────────────────────
+def page_pdf():
+    st.markdown('<div class="main-title"><h1>📄 Impression PDF des Groupes</h1><p>Générer un PDF complet avec liste d\'étudiants et rémunération du professeur</p></div>', unsafe_allow_html=True)
+
+    df_groupes = read_sheet("Groupes")
+    df_etudiants = read_sheet("Étudiants")
+    df_paie = read_sheet("Paiements")
+
+    if df_groupes.empty:
+        st.warning("⚠️ Aucun groupe créé. Créez d'abord des groupes.")
+        return
+
+    st.markdown('<div class="section-header">🖨️ Sélectionner un groupe à imprimer</div>', unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        groupe_sel = st.selectbox("Groupe", df_groupes['Nom Groupe'].tolist() if 'Nom Groupe' in df_groupes.columns else [])
+
+    grp_info = df_groupes[df_groupes['Nom Groupe'] == groupe_sel].iloc[0] if not df_groupes.empty and groupe_sel else None
+    professeur = grp_info.get('Professeur', 'N/A') if grp_info is not None else 'N/A'
     
     with col2:
-        st.image("https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg", width=200)
-        st.balloons()
+        st.info(f"👨‍🏫 Professeur : **{professeur}**")
 
-elif lesson_id == "var_int":
-    st.markdown('<div class="lesson-title">📊 Integer Variables</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>What are Integers?</h3>
-    Integers are <strong>whole numbers</strong> (positive, negative, or zero) without decimal points.
-    
-    <h4>Examples:</h4>
-    <code>age = 25</code><br>
-    <code>temperature = -10</code><br>
-    <code>score = 0</code><br>
-    <code>year = 2026</code>
-    
-    <h4>Characteristics:</h4>
-    <ul>
-    <li>No decimal point</li>
-    <li>Can be positive or negative</li>
-    <li>Type: <code>int</code></li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to create these integer variables and print them:
-    <ol>
-    <li><code>my_age</code> with your age</li>
-    <li><code>year</code> with current year (2024)</li>
-    <li><code>temperature</code> with -5</li>
-    </ol>
-    Print all three variables.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=200, key="var_int_code", 
-                        placeholder="my_age = 20\nyear = 2024\n...")
-    
-    if st.button("▶️ Run Code", key="run_var_int"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    if grp_info is not None:
+        st.markdown("**Détails du groupe :**")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Niveau", grp_info.get('Niveau', 'N/A'))
+        c2.metric("Horaire", grp_info.get('Horaire', 'N/A'))
+        c3.metric("Salle", grp_info.get('Salle', 'N/A'))
+        c4.metric("Frais", f"{grp_info.get('Frais', 0):,.0f} MAD")
 
-elif lesson_id == "var_float":
-    st.markdown('<div class="lesson-title">📊 Float Variables</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>What are Floats?</h3>
-    Floats are numbers <strong>with decimal points</strong>.
-    
-    <h4>Examples:</h4>
-    <code>price = 19.99</code><br>
-    <code>temperature = 36.6</code><br>
-    <code>pi = 3.14159</code><br>
-    <code>height = 1.75</code>
-    
-    <h4>Characteristics:</h4>
-    <ul>
-    <li>Must have decimal point</li>
-    <li>Can represent fractions</li>
-    <li>Type: <code>float</code></li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Create and print these float variables:
-    <ol>
-    <li><code>height</code> with your height in meters (e.g., 1.75)</li>
-    <li><code>price</code> with 29.99</li>
-    <li><code>pi</code> with 3.14159</li>
-    </ol>
-    Print all three variables.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=200, key="var_float_code")
-    
-    if st.button("▶️ Run Code", key="run_var_float"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    # Étudiants du groupe
+    etudiants_grp = pd.DataFrame()
+    if not df_etudiants.empty and 'Groupe' in df_etudiants.columns and groupe_sel:
+        etudiants_grp = df_etudiants[df_etudiants['Groupe'] == groupe_sel]
 
-elif lesson_id == "var_string":
-    st.markdown('<div class="lesson-title">📊 String Variables</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>What are Strings?</h3>
-    Strings are <strong>text</strong> enclosed in quotes (single ' or double ").
-    
-    <h4>Examples:</h4>
-    <code>name = "Hadjar"</code><br>
-    <code>city = 'Algiers'</code><br>
-    <code>message = "Hello, World!"</code><br>
-    <code>course = 'Python Programming'</code>
-    
-    <h4>Characteristics:</h4>
-    <ul>
-    <li>Must be in quotes</li>
-    <li>Can contain letters, numbers, symbols</li>
-    <li>Type: <code>str</code></li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Create and print these string variables:
-    <ol>
-    <li><code>name</code> with your name</li>
-    <li><code>city</code> with your city</li>
-    <li><code>message</code> with "I love Python!"</li>
-    </ol>
-    Print all three variables.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=200, key="var_string_code")
-    
-    if st.button("▶️ Run Code", key="run_var_string"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    st.markdown(f"**{len(etudiants_grp)} étudiant(s) dans ce groupe**")
+    if not etudiants_grp.empty:
+        st.dataframe(etudiants_grp[['Prénom','Nom','Téléphone','Email','Statut Paiement']
+                                   if all(c in etudiants_grp.columns for c in ['Prénom','Nom','Téléphone','Email','Statut Paiement'])
+                                   else etudiants_grp.columns.tolist()],
+                     use_container_width=True, height=250)
 
-elif lesson_id == "var_bool":
-    st.markdown('<div class="lesson-title">📊 Boolean Variables</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>What are Booleans?</h3>
-    Booleans represent <strong>True or False</strong> values.
-    
-    <h4>Examples:</h4>
-    <code>is_student = True</code><br>
-    <code>is_raining = False</code><br>
-    <code>has_license = True</code><br>
-    <code>is_adult = False</code>
-    
-    <h4>Characteristics:</h4>
-    <ul>
-    <li>Only two values: <code>True</code> or <code>False</code></li>
-    <li>First letter must be CAPITAL</li>
-    <li>Type: <code>bool</code></li>
-    <li>Used in conditions</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Create and print these boolean variables:
-    <ol>
-    <li><code>is_student</code> with True</li>
-    <li><code>is_raining</code> with False</li>
-    <li><code>loves_python</code> with True</li>
-    </ol>
-    Print all three variables.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=200, key="var_bool_code")
-    
-    if st.button("▶️ Run Code", key="run_var_bool"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    if st.button("🖨️ Générer le PDF du Groupe", use_container_width=True, type="primary"):
+        with st.spinner("Génération du PDF..."):
+            pdf_buf = generate_pdf_groupe(groupe_sel, professeur, etudiants_grp, df_paie)
+        st.success("✅ PDF généré avec succès !")
+        st.download_button(
+            label=f"⬇️ Télécharger PDF — {groupe_sel}",
+            data=pdf_buf,
+            file_name=f"groupe_{groupe_sel.replace(' ','_')}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
-elif lesson_id == "var_conversion":
-    st.markdown('<div class="lesson-title">📊 Type Conversion</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Converting Between Types</h3>
-    You can convert variables from one type to another.
-    
-    <h4>Conversion Functions:</h4>
-    <code>int()</code> - Convert to integer<br>
-    <code>float()</code> - Convert to float<br>
-    <code>str()</code> - Convert to string<br>
-    <code>bool()</code> - Convert to boolean
-    
-    <h4>Examples:</h4>
-    <code>x = int(3.7)      # x = 3</code><br>
-    <code>y = float(5)      # y = 5.0</code><br>
-    <code>z = str(100)      # z = "100"</code><br>
-    <code>a = int("42")     # a = 42</code>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to:
-    <ol>
-    <li>Convert 3.9 to integer and store in <code>num1</code></li>
-    <li>Convert 7 to float and store in <code>num2</code></li>
-    <li>Convert 50 to string and store in <code>text</code></li>
-    <li>Convert "123" to integer and store in <code>num3</code></li>
-    </ol>
-    Print all four variables with their types using <code>type()</code>.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="var_conv_code",
-                       placeholder="num1 = int(3.9)\nprint(num1, type(num1))\n...")
-    
-    if st.button("▶️ Run Code", key="run_var_conv"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown('<div class="section-header">📦 Exporter tous les groupes</div>', unsafe_allow_html=True)
+    if st.button("📄 Générer PDFs de TOUS les groupes (ZIP)", use_container_width=True):
+        import zipfile
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, 'w') as zf:
+            for _, g in df_groupes.iterrows():
+                g_nom = g.get('Nom Groupe', '')
+                g_prof = g.get('Professeur', '')
+                g_et = df_etudiants[df_etudiants['Groupe'] == g_nom] if not df_etudiants.empty and 'Groupe' in df_etudiants.columns else pd.DataFrame()
+                pdf = generate_pdf_groupe(g_nom, g_prof, g_et, df_paie)
+                zf.writestr(f"groupe_{g_nom.replace(' ','_')}.pdf", pdf.read())
+        zip_buf.seek(0)
+        st.download_button("⬇️ Télécharger tous les PDFs (ZIP)", zip_buf,
+                           file_name="futuro_groupes_pdfs.zip", mime="application/zip",
+                           use_container_width=True)
 
-elif lesson_id == "output":
-    st.markdown('<div class="lesson-title">🖨️ Output with print()</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The print() Function</h3>
-    <code>print()</code> displays output on the screen.
-    
-    <h4>Different Ways to Print:</h4>
-    <code>print("Hello")</code> - Print text<br>
-    <code>print(23)</code> - Print number<br>
-    <code>print(x)</code> - Print variable<br>
-    <code>print("Age:", 23)</code> - Print multiple items<br>
-    <code>print("Hello", "World")</code> - Separated by space
-    
-    <h4>Special Characters:</h4>
-    <code>\\n</code> - New line<br>
-    <code>\\t</code> - Tab
-    
-    <h4>Example:</h4>
-    <code>name = "Naila"</code><br>
-    <code>age = 23</code><br>
-    <code>print("Name:", name)</code><br>
-    <code>print("Age:", age)</code>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to:
-    <ol>
-    <li>Print "Welcome to Python!"</li>
-    <li>Create variables: <code>name</code> and <code>age</code></li>
-    <li>Print both on separate lines using labels</li>
-    <li>Print them together in one line</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="output_code")
-    
-    if st.button("▶️ Run Code", key="run_output"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+# ─── MAIN ─────────────────────────────────────────────────────────────────────
+def main():
+    init_excel()
+    sidebar_nav()
 
-elif lesson_id == "input":
-    st.markdown('<div class="lesson-title">⌨️ Input with input()</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The input() Function</h3>
-    <code>input()</code> gets data from the user.
-    
-    <h4>Syntax:</h4>
-    <code>variable = input("Your prompt: ")</code>
-    
-    <h4>Important:</h4>
-    <ul>
-    <li><code>input()</code> always returns a STRING</li>
-    <li>Must convert to int/float for numbers</li>
-    </ul>
-    
-    <h4>Examples:</h4>
-    <code>name = input("Enter name: ")</code><br>
-    <code>age = int(input("Enter age: "))</code><br>
-    <code>price = float(input("Enter price: "))</code>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to:
-    <ol>
-    <li>Ask for user's name (string)</li>
-    <li>Ask for user's age (convert to int)</li>
-    <li>Ask for user's height (convert to float)</li>
-    <li>Print all information</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.info("💡 For testing, provide input data below (one line per input)")
-    input_data = st.text_area("Test Input Data:", height=100, key="input_data",
-                              placeholder="Hadjar\n25\n1.75")
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="input_code")
-    
-    if st.button("▶️ Run Code", key="run_input"):
-        if code.strip():
-            output, error = execute_code(code, input_data)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    page = st.session_state.get("page", "dashboard")
 
-elif lesson_id == "arith_basic":
-    st.markdown('<div class="lesson-title">➕ Basic Arithmetic Operators</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Basic Arithmetic Operations</h3>
-    
-    <table style="width:100%; border-collapse: collapse;">
-    <tr style="background-color: #2E86AB; color: white;">
-    <th style="padding: 10px; border: 1px solid #ddd;">Operator</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Name</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Example</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Result</th>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>+</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Addition</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 + 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">15</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>-</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Subtraction</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 - 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">5</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>*</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Multiplication</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 * 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">50</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>/</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Division</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 / 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">2.0</td>
-    </tr>
-    </table>
-    
-    <p><strong>Note:</strong> Division <code>/</code> always returns a float!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to calculate and print:
-    <ol>
-    <li>50 + 30</li>
-    <li>100 - 45</li>
-    <li>12 * 8</li>
-    <li>20 / 4</li>
-    </ol>
-    Use variables to store results, then print each with a label.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="arith_basic_code")
-    
-    if st.button("▶️ Run Code", key="run_arith_basic"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
+    pages = {
+        "dashboard": page_dashboard,
+        "etudiants": page_etudiants,
+        "inscriptions": page_inscriptions,
+        "professeurs": page_professeurs,
+        "groupes": page_groupes,
+        "paiements": page_paiements,
+        "presences": page_presences,
+        "alertes": page_alertes,
+        "pdf": page_pdf,
+    }
+    pages.get(page, page_dashboard)()
 
-elif lesson_id == "arith_advanced":
-    st.markdown('<div class="lesson-title">➗ Advanced Arithmetic Operators</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Advanced Arithmetic Operations</h3>
-    
-    <table style="width:100%; border-collapse: collapse;">
-    <tr style="background-color: #2E86AB; color: white;">
-    <th style="padding: 10px; border: 1px solid #ddd;">Operator</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Name</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Example</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Result</th>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>//</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Floor Division</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 // 3</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">3 (no decimal)</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>%</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Modulus (Remainder)</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 % 3</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">1</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>**</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Exponent (Power)</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>2 ** 3</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">8 (2³)</td>
-    </tr>
-    </table>
-    
-    <h4>Explanation:</h4>
-    <ul>
-    <li><code>//</code> divides and removes decimal part</li>
-    <li><code>%</code> gives remainder after division</li>
-    <li><code>**</code> raises to power (e.g., 2**3 = 2×2×2)</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write code to calculate and print:
-    <ol>
-    <li>17 // 5 (floor division)</li>
-    <li>17 % 5 (modulus/remainder)</li>
-    <li>3 ** 4 (3 to the power of 4)</li>
-    <li>100 // 7 and 100 % 7</li>
-    </ol>
-    Print each result with a descriptive label.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="arith_adv_code")
-    
-    if st.button("▶️ Run Code", key="run_arith_adv"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "arith_operations":
-    st.markdown('<div class="lesson-title">🔢 Combined Arithmetic Operations</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Order of Operations (PEMDAS)</h3>
-    Python follows mathematical order:
-    <ol>
-    <li><strong>P</strong>arentheses: <code>()</code></li>
-    <li><strong>E</strong>xponents: <code>**</code></li>
-    <li><strong>M</strong>ultiplication & <strong>D</strong>ivision: <code>* / // %</code></li>
-    <li><strong>A</strong>ddition & <strong>S</strong>ubtraction: <code>+ -</code></li>
-    </ol>
-    
-    <h4>Examples:</h4>
-    <code>result = 2 + 3 * 4     # 14 (not 20!)</code><br>
-    <code>result = (2 + 3) * 4   # 20</code><br>
-    <code>result = 10 + 5 ** 2   # 35</code><br>
-    <code>result = (10 + 5) ** 2 # 225</code>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Calculate these expressions (think about order!):
-    <ol>
-    <li><code>5 + 3 * 2</code></li>
-    <li><code>(5 + 3) * 2</code></li>
-    <li><code>10 / 2 + 3</code></li>
-    <li><code>2 ** 3 + 4 * 5</code></li>
-    <li><code>(20 + 10) / 2 ** 2</code></li>
-    </ol>
-    Store in variables and print each with its calculation.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=300, key="arith_ops_code")
-    
-    if st.button("▶️ Run Code", key="run_arith_ops"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "comp_operators":
-    st.markdown('<div class="lesson-title">⚖️ Comparison Operators</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Comparison Operators</h3>
-    These operators compare values and return <code>True</code> or <code>False</code>.
-    
-    <table style="width:100%; border-collapse: collapse;">
-    <tr style="background-color: #2E86AB; color: white;">
-    <th style="padding: 10px; border: 1px solid #ddd;">Operator</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Meaning</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Example</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Result</th>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>==</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Equal to</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>5 == 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>!=</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Not equal to</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>5 != 3</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>&gt;</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Greater than</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>10 &gt; 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>&lt;</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Less than</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>5 &lt; 10</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>&gt;=</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Greater or equal</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>5 &gt;= 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>&lt;=</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Less or equal</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>3 &lt;= 5</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    </table>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Test all comparison operators:
-    <ol>
-    <li>Create <code>x = 10</code> and <code>y = 5</code></li>
-    <li>Print result of <code>x == y</code></li>
-    <li>Print result of <code>x != y</code></li>
-    <li>Print result of <code>x &gt; y</code></li>
-    <li>Print result of <code>x &lt; y</code></li>
-    <li>Print result of <code>x &gt;= 10</code></li>
-    <li>Print result of <code>y &lt;= 5</code></li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=300, key="comp_code")
-    
-    if st.button("▶️ Run Code", key="run_comp"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "logical_operators":
-    st.markdown('<div class="lesson-title">🔗 Logical Operators</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Logical Operators</h3>
-    Combine multiple conditions.
-    
-    <table style="width:100%; border-collapse: collapse;">
-    <tr style="background-color: #2E86AB; color: white;">
-    <th style="padding: 10px; border: 1px solid #ddd;">Operator</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Description</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Example</th>
-    <th style="padding: 10px; border: 1px solid #ddd;">Result</th>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>and</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Both must be True</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>True and True</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>or</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">At least one True</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>True or False</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">True</td>
-    </tr>
-    <tr>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>not</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">Reverses the value</td>
-    <td style="padding: 10px; border: 1px solid #ddd;"><code>not True</code></td>
-    <td style="padding: 10px; border: 1px solid #ddd;">False</td>
-    </tr>
-    </table>
-    
-    <h4>Examples:</h4>
-    <code>age = 20</code><br>
-    <code>has_id = True</code><br>
-    <code>can_enter = age >= 18 and has_id  # True</code><br>
-    <code>is_student = True</code><br>
-    <code>is_senior = False</code><br>
-    <code>gets_discount = is_student or is_senior  # True</code>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    <ol>
-    <li>Create: <code>age = 25</code>, <code>has_license = True</code></li>
-    <li>Check: <code>age >= 18 and has_license</code></li>
-    <li>Create: <code>is_weekend = False</code>, <code>is_holiday = True</code></li>
-    <li>Check: <code>is_weekend or is_holiday</code></li>
-    <li>Create: <code>is_raining = True</code></li>
-    <li>Check: <code>not is_raining</code></li>
-    </ol>
-    Print all results with labels.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=300, key="logical_code")
-    
-    if st.button("▶️ Run Code", key="run_logical"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "cond_if":
-    st.markdown('<div class="lesson-title">❓ if Statement</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The if Statement</h3>
-    Executes code only if a condition is <code>True</code>.
-    
-    <h4>Syntax:</h4>
-    <pre><code>if condition:
-        # code to execute
-        # must be indented (4 spaces or Tab)</code></pre>
-    
-    <h4>Example:</h4>
-    <pre><code>age = 20
-if age >= 18:
-    print("You are an adult")
-    print("You can vote")</code></pre>
-    
-    <p><strong>Important:</strong> Indentation (spaces) is REQUIRED!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write a program that:
-    <ol>
-    <li>Creates a variable <code>temperature = 30</code></li>
-    <li>If temperature is greater than 25, print "It's hot!"</li>
-    <li>If temperature is greater than 35, print "It's very hot!"</li>
-    </ol>
-    Remember to use proper indentation!
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="cond_if_code")
-    
-    if st.button("▶️ Run Code", key="run_cond_if"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "cond_ifelse":
-    st.markdown('<div class="lesson-title">🔀 if/else Statement</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The if/else Statement</h3>
-    Executes one block if <code>True</code>, another if <code>False</code>.
-    
-    <h4>Syntax:</h4>
-    <pre><code>if condition:
-        # code if True
-    else:
-        # code if False</code></pre>
-    
-    <h4>Example:</h4>
-    <pre><code>age = 16
-if age >= 18:
-    print("You can vote")
-else:
-    print("You cannot vote yet")</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write a program that:
-    <ol>
-    <li>Creates a variable <code>score = 75</code></li>
-    <li>If score >= 60, print "You passed!"</li>
-    <li>Otherwise, print "You failed. Try again!"</li>
-    </ol>
-    Test with different scores to see both messages.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=250, key="cond_ifelse_code")
-    
-    if st.button("▶️ Run Code", key="run_cond_ifelse"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "cond_ifelif":
-    st.markdown('<div class="lesson-title">🔀 if/elif/else Statement</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The if/elif/else Statement</h3>
-    Test multiple conditions in order.
-    
-    <h4>Syntax:</h4>
-    <pre><code>if condition1:
-        # code if condition1 is True
-    elif condition2:
-        # code if condition2 is True
-    elif condition3:
-        # code if condition3 is True
-    else:
-        # code if all are False</code></pre>
-    
-    <h4>Example:</h4>
-    <pre><code>score = 85
-if score >= 90:
-    print("Grade: A")
-elif score >= 80:
-    print("Grade: B")
-elif score >= 70:
-    print("Grade: C")
-elif score >= 60:
-    print("Grade: D")
-else:
-    print("Grade: F")</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Create a temperature classifier:
-    <ol>
-    <li>Create variable <code>temp</code></li>
-    <li>If temp > 30: print "Hot"</li>
-    <li>Elif temp > 20: print "Warm"</li>
-    <li>Elif temp > 10: print "Cool"</li>
-    <li>Else: print "Cold"</li>
-    </ol>
-    Test with different temperatures!
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=300, key="cond_ifelif_code")
-    
-    if st.button("▶️ Run Code", key="run_cond_ifelif"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "loop_for":
-    st.markdown('<div class="lesson-title">🔁 for Loop</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The for Loop</h3>
-    Repeats code a specific number of times.
-    
-    <h4>Syntax:</h4>
-    <pre><code>for variable in sequence:
-        # code to repeat</code></pre>
-    
-    <h4>Examples:</h4>
-    <pre><code>for i in [1, 2, 3, 4, 5]:
-    print(i)
-    
-for name in ["Alice", "Bob", "Charlie"]:
-    print("Hello", name)
-    
-for letter in "Python":
-    print(letter)</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    <ol>
-    <li>Create a list of 5 fruits</li>
-    <li>Use a for loop to print each fruit</li>
-    <li>Loop through the word "PYTHON" and print each letter</li>
-    <li>Loop through numbers [10, 20, 30, 40, 50] and print each</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=300, key="loop_for_code")
-    
-    if st.button("▶️ Run Code", key="run_loop_for"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "loop_range":
-    st.markdown('<div class="lesson-title">🔁 The range() Function</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Using range() with for Loops</h3>
-    <code>range()</code> generates a sequence of numbers.
-    
-    <h4>Three Ways to Use range():</h4>
-    <ol>
-    <li><code>range(stop)</code> - from 0 to stop-1</li>
-    <li><code>range(start, stop)</code> - from start to stop-1</li>
-    <li><code>range(start, stop, step)</code> - with custom step</li>
-    </ol>
-    
-    <h4>Examples:</h4>
-    <pre><code>for i in range(5):
-    print(i)  # 0, 1, 2, 3, 4
-    
-for i in range(2, 7):
-    print(i)  # 2, 3, 4, 5, 6
-    
-for i in range(0, 10, 2):
-    print(i)  # 0, 2, 4, 6, 8
-    
-for i in range(10, 0, -1):
-    print(i)  # 10, 9, 8, ..., 1</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    Write loops to print:
-    <ol>
-    <li>Numbers from 0 to 10</li>
-    <li>Numbers from 5 to 15</li>
-    <li>Even numbers from 0 to 20 (use step=2)</li>
-    <li>Numbers from 20 down to 1 (backwards)</li>
-    <li>Multiples of 5 from 0 to 50</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=350, key="loop_range_code")
-    
-    if st.button("▶️ Run Code", key="run_loop_range"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "loop_while":
-    st.markdown('<div class="lesson-title">🔁 while Loop</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>The while Loop</h3>
-    Repeats code while a condition is <code>True</code>.
-    
-    <h4>Syntax:</h4>
-    <pre><code>while condition:
-        # code to repeat
-        # MUST update condition or loop forever!</code></pre>
-    
-    <h4>Example:</h4>
-    <pre><code>count = 1
-while count <= 5:
-    print(count)
-    count = count + 1  # or count += 1
-    
-# Output: 1, 2, 3, 4, 5</code></pre>
-    
-    <p><strong>⚠️ Warning:</strong> Always update the condition variable to avoid infinite loops!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    <ol>
-    <li>Print numbers from 1 to 10 using while loop</li>
-    <li>Print even numbers from 2 to 20</li>
-    <li>Count down from 10 to 1</li>
-    <li>Start at 1 and double until >= 100 (1, 2, 4, 8, ...)</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=350, key="loop_while_code")
-    
-    if st.button("▶️ Run Code", key="run_loop_while"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "loop_nested":
-    st.markdown('<div class="lesson-title">🔁 Nested Loops</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>Nested Loops</h3>
-    A loop inside another loop.
-    
-    <h4>Syntax:</h4>
-    <pre><code>for i in range(3):
-        for j in range(3):
-            print(i, j)</code></pre>
-    
-    <h4>Example - Multiplication Table:</h4>
-    <pre><code>for i in range(1, 4):
-        for j in range(1, 4):
-            print(f"{i} x {j} = {i*j}")</code></pre>
-    
-    <h4>Pattern Example:</h4>
-    <pre><code>for i in range(5):
-        for j in range(i + 1):
-            print("*", end="")
-        print()  # New line
-        
-# Output:
-# *
-# **
-# ***
-# ****
-# *****</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    <ol>
-    <li>Print a 5x5 grid of coordinates (i, j)</li>
-    <li>Create a multiplication table for 1-5</li>
-    <li>Print this pattern:<br>
-    <code>1<br>22<br>333<br>4444<br>55555</code></li>
-    <li>Print a rectangle of stars (5 rows, 10 columns)</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=400, key="loop_nested_code")
-    
-    if st.button("▶️ Run Code", key="run_loop_nested"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-elif lesson_id == "loop_control":
-    st.markdown('<div class="lesson-title">🔁 Loop Control: break and continue</div>', unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="theory-box">
-    <h3>break and continue Statements</h3>
-    
-    <h4>break - Exit the loop completely</h4>
-    <pre><code>for i in range(10):
-    if i == 5:
-        break  # Stop loop at 5
-    print(i)
-# Output: 0, 1, 2, 3, 4</code></pre>
-    
-    <h4>continue - Skip current iteration</h4>
-    <pre><code>for i in range(6):
-    if i == 3:
-        continue  # Skip 3
-    print(i)
-# Output: 0, 1, 2, 4, 5</code></pre>
-    
-    <h4>Example - Skip even numbers:</h4>
-    <pre><code>for i in range(10):
-    if i % 2 == 0:
-        continue
-    print(i)  # Only odd numbers</code></pre>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <div class="task-box">
-    <h3>📝 Your Task:</h3>
-    <ol>
-    <li>Loop 1-20, but break at 15</li>
-    <li>Loop 1-10, skip (continue) number 5</li>
-    <li>Print numbers 1-30, but skip multiples of 3</li>
-    <li>Loop and find first number divisible by 7 and 5, then break</li>
-    </ol>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    code = st.text_area("✏️ Write your code here:", height=350, key="loop_control_code")
-    
-    if st.button("▶️ Run Code", key="run_loop_control"):
-        if code.strip():
-            output, error = execute_code(code)
-            if error:
-                st.markdown(f'<div class="error-box">❌ <strong>Error:</strong><br>{error}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="success-box">✅ <strong>Output:</strong></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="output-box">{output if output else "(No output)"}</div>', unsafe_allow_html=True)
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666; padding: 20px;'>
-    <p style='font-size: 1.1em;'><strong>Keep practicing! 🚀</strong></p>
-    <p>Master Python by writing code yourself!</p>
-    <p style='color: #F18F01;'>© 2024 Futuro Skills Academy - Hadjar Naila</p>
-</div>
-""", unsafe_allow_html=True)
+if __name__ == "__main__":
+    main()
